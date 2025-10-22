@@ -8,9 +8,9 @@ Student Email: E1356258@u.nus.edu
 Student Contact: +65 90094245
 
 Name: ADRIAN LIM HONG FU
-Student Number:
-Student Email:
-Student Contact:
+Student Number: A0269931R
+Student Email: adrianlim@u.nus.edu
+Student Contact: +65 97583546
 
 YouTube Demo: Coming Soon
 
