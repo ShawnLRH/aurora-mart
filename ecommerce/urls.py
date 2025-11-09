@@ -9,4 +9,11 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('logout/', LogoutView.as_view(next_page='home'), name='logout'),
     path('loaddata/', views.load_data, name='load_data'),
+    
+    # Cart URLs
+    path('cart/', views.cart_view, name='cart_view'),
+    path('cart/add/<str:sku>/', views.add_to_cart, name='add_to_cart'),
+    path('cart/update/<int:item_id>/', views.update_cart_item, name='update_cart_item'),
+    path('cart/remove/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
+    path('cart/clear/', views.clear_cart, name='clear_cart'),
 ]

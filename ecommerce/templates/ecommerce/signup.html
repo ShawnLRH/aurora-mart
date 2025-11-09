@@ -10,8 +10,8 @@
         html, body { height: 100%; margin: 0; padding: 0; }
         body { background-color: #f8f9fa; font-family: Arial, sans-serif; display: flex; flex-direction: column; }
         .content { flex: 1 0 auto; }
-        .auth-container { max-width: 800px; margin: 50px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .form-side { padding: 40px; }
+        .auth-container { max-width: 1000px; margin: 50px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .form-side { padding: 40px; max-height: 800px; overflow-y: auto; }
         .logo-side { background-color: #fff; height: 100%; display: flex; align-items: center; justify-content: center; padding: 40px 20px; } 
         .form-control { border-radius: 50px; border: 1px solid #dee2e6; padding: 10px 20px; }
         .btn-black { background-color: #000; color: #fff; border-radius: 50px; padding: 10px; font-weight: bold; }
@@ -22,6 +22,15 @@
         .form-check-label { font-size: 0.85rem; color: #6c757d; }
         .footer { background-color: #343a40; color: white; padding: 40px 0; flex-shrink: 0; }
         .logo-img { max-width: 70%; max-height: 70%; object-fit: contain; margin-top: 40px; }
+        h5 { color: #000; font-weight: 600; border-bottom: 2px solid #000; padding-bottom: 8px; }
+        label { font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display: block; }
+        .form-control:focus, .form-check-input:focus { border-color: #000; box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.15); }
+        .alert { border-radius: 8px; font-size: 0.9rem; }
+        .form-side::-webkit-scrollbar { width: 8px; }
+        .form-side::-webkit-scrollbar-track { background: #f1f1f1; }
+        .form-side::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        .form-side::-webkit-scrollbar-thumb:hover { background: #555; }
+        .helptext { font-size: 0.75rem; color: #6c757d; margin-top: 3px; display: block; }
     </style>
 </head>
 <body>
@@ -82,30 +91,103 @@
                 <div class="col-md-6 form-side">
                     <h2>Sign Up</h2>
                     <p class="subtitle">Already Have An Account, <a href="{% url 'login' %}" class="text-decoration-underline">Login</a>.</p>
+                    
+                    {% if form.errors %}
+                        <div class="alert alert-danger" role="alert">
+                            <strong>Please correct the following errors:</strong>
+                            <ul>
+                                {% for field in form %}
+                                    {% for error in field.errors %}
+                                        <li>{{ field.label }}: {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                                {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
                     <form method="post">
                         {% csrf_token %}
+                        
+                        <!-- Account Information -->
+                        <h5 class="mb-3 mt-4">Account Information</h5>
                         <div class="row mb-3">
-                            <div class="col">
-                                <label for="id_full_name">Full Name</label>
-                                <input type="text" class="form-control" id="id_full_name" name="full_name" placeholder="michael joe" required>
+                            <div class="col-md-6">
+                                {{ form.full_name.label_tag }}
+                                {{ form.full_name }}
                             </div>
-                            <div class="col">
-                                <label for="id_email">Email</label>
-                                <input type="email" class="form-control" id="id_email" name="email" placeholder="michael.joe@example.com" required>
+                            <div class="col-md-6">
+                                {{ form.email.label_tag }}
+                                {{ form.email }}
                             </div>
                         </div>
                         <div class="row mb-3">
-                            <div class="col password-wrapper">
-                                <label for="id_password1">Password</label>
-                                <input type="password" class="form-control" id="id_password1" name="password1" placeholder="********" required>
+                            <div class="col-md-6 password-wrapper">
+                                {{ form.password1.label_tag }}
+                                {{ form.password1 }}
                                 <i class="bi bi-eye-slash" onclick="togglePassword('id_password1', this)"></i>
                             </div>
-                            <div class="col password-wrapper">
-                                <label for="id_password2">Confirm Password</label>
-                                <input type="password" class="form-control" id="id_password2" name="password2" placeholder="********" required>
+                            <div class="col-md-6 password-wrapper">
+                                {{ form.password2.label_tag }}
+                                {{ form.password2 }}
                                 <i class="bi bi-eye-slash" onclick="togglePassword('id_password2', this)"></i>
                             </div>
                         </div>
+
+                        <!-- Personal Information -->
+                        <h5 class="mb-3 mt-4">Personal Information</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.age.label_tag }}
+                                {{ form.age }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.gender.label_tag }}
+                                {{ form.gender }}
+                            </div>
+                        </div>
+
+                        <!-- Employment & Education -->
+                        <h5 class="mb-3 mt-4">Employment & Education</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.employment_status.label_tag }}
+                                {{ form.employment_status }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.occupation.label_tag }}
+                                {{ form.occupation }}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.education.label_tag }}
+                                {{ form.education }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.monthly_income_sgd.label_tag }}
+                                {{ form.monthly_income_sgd }}
+                            </div>
+                        </div>
+
+                        <!-- Household Information -->
+                        <h5 class="mb-3 mt-4">Household Information</h5>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.household_size.label_tag }}
+                                {{ form.household_size }}
+                            </div>
+                            <div class="col-md-6">
+                                <label>&nbsp;</label>
+                                <div class="form-check" style="margin-top: 8px;">
+                                    {{ form.has_children }}
+                                    {{ form.has_children.label_tag }}
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="form-check mb-3">
                             <input type="checkbox" class="form-check-input" id="terms" required>
                             <label class="form-check-label" for="terms">I have read and agreed to the Terms of Service and Privacy Policy</label>

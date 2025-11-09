@@ -1,5 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Product, Customer
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from .models import Product, Customer, Cart, CartItem
 from django.contrib.auth import login
 from .forms import SignUpForm
 import csv
@@ -11,6 +14,7 @@ def home(request):
     products = Product.objects.all()
     featured_products = products[:4]
     popular_products = products[4:8]
+    
     context = {
         'featured_products': featured_products,
         'popular_products': popular_products,
@@ -30,9 +34,15 @@ def signup(request):
     if request.method == 'POST':
         form = SignUpForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('home')
+            try:
+                user = form.save()
+                login(request, user)
+                messages.success(request, f'Welcome {user.first_name}! Your account has been created successfully.')
+                return redirect('home')
+            except Exception as e:
+                messages.error(request, f'An error occurred while creating your account. Please try again.')
+        else:
+            messages.error(request, 'Please correct the errors below.')
     else:
         form = SignUpForm()
     return render(request, 'ecommerce/signup.html', {'form': form})
@@ -149,3 +159,118 @@ def load_data(request):
         </body>
         </html>
         """)
+
+
+def get_or_create_cart(user):
+    """Helper function to get or create a cart for the user"""
+    if user.is_authenticated:
+        cart, created = Cart.objects.get_or_create(user=user)
+        return cart
+    return None
+
+
+@login_required
+def cart_view(request):
+    """Display the user's shopping cart"""
+    cart = get_or_create_cart(request.user)
+    context = {
+        'cart': cart,
+    }
+    return render(request, 'ecommerce/cart.html', context)
+
+
+@login_required
+def add_to_cart(request, sku):
+    """Add a product to the cart"""
+    if request.method == 'POST':
+        product = get_object_or_404(Product, sku_code=sku)
+        cart = get_or_create_cart(request.user)
+        
+        quantity = int(request.POST.get('quantity', 1))
+        
+        # Check if product already in cart
+        cart_item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            defaults={'quantity': quantity}
+        )
+        
+        if not created:
+            # Update quantity if item already exists
+            cart_item.quantity += quantity
+            cart_item.save()
+        
+        messages.success(request, f'{product.product_name} added to cart!')
+        
+        # Return JSON response for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': f'{product.product_name} added to cart!',
+                'cart_total': cart.total_items
+            })
+        
+        return redirect('product_detail', sku=sku)
+    
+    return redirect('home')
+
+
+@login_required
+def update_cart_item(request, item_id):
+    """Update quantity of a cart item"""
+    if request.method == 'POST':
+        cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
+        quantity = int(request.POST.get('quantity', 1))
+        
+        if quantity > 0:
+            cart_item.quantity = quantity
+            cart_item.save()
+            messages.success(request, 'Cart updated successfully!')
+        else:
+            cart_item.delete()
+            messages.success(request, 'Item removed from cart!')
+        
+        # Return JSON response for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            cart = cart_item.cart if cart_item.pk else request.user.cart
+            return JsonResponse({
+                'success': True,
+                'cart_total': cart.total_items,
+                'subtotal': float(cart.subtotal),
+                'item_total': float(cart_item.total_price) if cart_item.pk else 0
+            })
+    
+    return redirect('cart_view')
+
+
+@login_required
+def remove_from_cart(request, item_id):
+    """Remove an item from the cart"""
+    if request.method == 'POST':
+        cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
+        product_name = cart_item.product.product_name
+        cart_item.delete()
+        messages.success(request, f'{product_name} removed from cart!')
+        
+        # Return JSON response for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            cart = request.user.cart
+            return JsonResponse({
+                'success': True,
+                'message': f'{product_name} removed from cart!',
+                'cart_total': cart.total_items,
+                'subtotal': float(cart.subtotal)
+            })
+    
+    return redirect('cart_view')
+
+
+@login_required
+def clear_cart(request):
+    """Clear all items from the cart"""
+    if request.method == 'POST':
+        cart = get_or_create_cart(request.user)
+        cart.items.all().delete()
+        messages.success(request, 'Cart cleared!')
+    
+    return redirect('cart_view')
