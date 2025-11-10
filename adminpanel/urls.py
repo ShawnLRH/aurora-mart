@@ -21,4 +21,6 @@ urlpatterns = [
     path('logs/', views.system_logs, name='admin_system_logs'),
     path('support/', views.support_tickets, name='admin_support_tickets'),
     path('support/<int:ticket_id>/', views.support_ticket_detail, name='admin_support_ticket_detail'),
+    path('ai/insights/', views.ai_insights, name='admin_ai_insights'),
+    path('ai/rules/', views.association_rules, name='admin_association_rules'),
 ]

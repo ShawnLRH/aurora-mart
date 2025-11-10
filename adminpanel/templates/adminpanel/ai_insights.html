@@ -1,0 +1,156 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}AI Insights - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="mb-3">
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="gradient-text"><i class="bi bi-brain"></i> AI Insights Dashboard</h1>
+            <p class="text-muted">Decision Tree Model - Category Predictions</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="modern-card p-4">
+                <h4 class="mb-4"><i class="bi bi-pie-chart"></i> Predicted Category Distribution</h4>
+                <canvas id="categoryChart" width="400" height="400"></canvas>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="modern-card p-4">
+                <h4 class="mb-4"><i class="bi bi-list-ol"></i> Category Frequency</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Category</th>
+                                <th>Count</th>
+                                <th>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for prediction in category_predictions %}
+                                {% if prediction.preferred_category %}
+                                    <tr>
+                                        <td><strong>{{ prediction.preferred_category }}</strong></td>
+                                        <td>{{ prediction.count }}</td>
+                                        <td>{{ prediction.percentage|floatformat:1 }}%</td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td><strong>Total Customers</strong></td>
+                                <td colspan="2"><strong>{{ total_customers }}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="modern-card p-4">
+                <h4 class="mb-3"><i class="bi bi-info-circle"></i> About This Data</h4>
+                <p class="mb-2">
+                    <strong>Decision Tree Model:</strong> Our AI model predicts customer preferred categories based on demographic data (age, gender, occupation, income, etc.)
+                </p>
+                <p class="mb-2">
+                    <strong>How It Works:</strong> When customers sign up, the model analyzes their profile and predicts which product category they're most likely to be interested in.
+                </p>
+                <p class="mb-0">
+                    <strong>Business Value:</strong> This helps personalize the shopping experience and show relevant products on the home page.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart Data -->
+<script id="chart-data" type="application/json">
+    {
+        "labels": {{ chart_data.labels|safe }},
+        "values": {{ chart_data.values|safe }}
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    const chartDataElement = document.getElementById('chart-data');
+    const chartData = JSON.parse(chartDataElement.textContent);
+    
+    const data = {
+        labels: chartData.labels,
+        datasets: [{
+            data: chartData.values,
+            backgroundColor: [
+                '#667eea',
+                '#764ba2',
+                '#f093fb',
+                '#4facfe',
+                '#43e97b',
+                '#fa709a',
+                '#fee140',
+                '#30cfd0',
+                '#a8edea',
+                '#fed6e3',
+                '#c471f5',
+                '#12c2e9'
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    };
+    
+    const config = {
+        type: 'pie',
+        data: data,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            let value = context.parsed || 0;
+                            let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            let percentage = ((value / total) * 100).toFixed(1);
+                            return label + ': ' + value + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    };
+    
+    new Chart(ctx, config);
+</script>
+
+<style>
+    .modern-card canvas {
+        max-height: 400px;
+    }
+</style>
+{% endblock %}

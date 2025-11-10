@@ -4,6 +4,12 @@
 
 {% block content %}
 <div class="container my-5">
+    <div class="mb-3">
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+
     <div class="modern-card">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="gradient-text mb-0">Staff Management</h2>
@@ -105,12 +111,6 @@
                 No staff users found. Click "Add Staff User" to create one.
             </div>
         {% endif %}
-        
-        <div class="mt-4">
-            <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
-            </a>
-        </div>
     </div>
 </div>
 {% endblock %}

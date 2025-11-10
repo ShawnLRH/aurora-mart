@@ -42,6 +42,8 @@ A complete B2C e-commerce web application using Python and Django conforming to 
 - **Bulk Operations**: Bulk price updates by category
 - **Staff Management**: Create and manage admin users
 - **System Logs**: Complete audit trail of all admin actions with IP tracking
+- **AI Analytics Dashboard**: View Decision Tree prediction insights with interactive pie chart showing category distribution
+- **Product Bundling Recommendations**: View top 50 "Frequently Bought Together" product pairs with support, confidence, and lift metrics
 
 ## Setup Instructions
 
@@ -252,6 +254,21 @@ When viewing cart, get intelligent suggestions:
 - Products that complement current cart items
 - Uses high-lift association rules
 - Quick "Add to Cart" buttons for one-click addition
+
+#### 5. AI Insights Dashboard (Admin Panel)
+Admins can view comprehensive AI analytics at `/adminpanel/ai/insights/`:
+- **Category Predictions**: Interactive pie chart showing distribution of most often predicted customer categories
+- **Prediction Statistics**: Table with counts and percentages per category showing which product categories the Decision Tree model predicts most frequently
+- **Business Intelligence**: Understand which categories drive customer acquisition and help with inventory planning
+
+#### 6. Product Bundling Recommendations (Admin Panel)
+Actionable insights for business strategy at `/adminpanel/ai/rules/`:
+- **Top 50 Product Pairs**: Most popular product combinations sorted by frequency
+- **Support Metrics**: How often items are bought together (Support %)
+- **Confidence Metrics**: Likelihood that customers who buy Product 1 also buy Product 2 (Confidence %)
+- **Lift Metrics**: How much more likely the pair is bought together vs. randomly (Lift)
+- **Business Applications**: Use these insights for product bundling, store layout optimization, and targeted marketing campaigns
+- **High Quality Rules**: All recommendations are from 997K+ association rules with strict confidence thresholds (≥99%)
 
 See **AI_TESTING_GUIDE.md** for detailed testing instructions.
 

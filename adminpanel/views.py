@@ -741,3 +741,89 @@ def support_ticket_detail(request, ticket_id):
         'status_choices': SupportTicket.STATUS_CHOICES,
     }
     return render(request, 'adminpanel/support_ticket_detail.html', context)
+
+
+@staff_member_required
+def ai_insights(request):
+    from ecommerce.models import Customer
+    from django.db.models import Count
+    
+    category_predictions = Customer.objects.values('preferred_category').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    total_customers = Customer.objects.count()
+    
+    # Add percentage to each prediction
+    predictions_list = []
+    for item in category_predictions:
+        if item['preferred_category']:
+            predictions_list.append({
+                'preferred_category': item['preferred_category'],
+                'count': item['count'],
+                'percentage': (item['count'] / total_customers * 100) if total_customers > 0 else 0
+            })
+    
+    chart_data = {
+        'labels': [item['preferred_category'] for item in predictions_list],
+        'values': [item['count'] for item in predictions_list],
+    }
+    
+    context = {
+        'category_predictions': predictions_list,
+        'total_customers': total_customers,
+        'chart_data': chart_data,
+    }
+    return render(request, 'adminpanel/ai_insights.html', context)
+
+
+@staff_member_required
+def association_rules(request):
+    import joblib
+    import os
+    from django.conf import settings
+    from ecommerce.models import Product
+    
+    error_message = None
+    bundling_recommendations = []
+    
+    try:
+        model_path = os.path.join(settings.BASE_DIR, 'model', 'b2c_products_500_transactions_50k.joblib')
+        
+        if os.path.exists(model_path):
+            rules = joblib.load(model_path)
+            
+            # Get all products for SKU to name mapping
+            products_dict = {p.sku_code: p.product_name for p in Product.objects.all()}
+            
+            # Sort by support (popularity) to get most common pairs
+            rules = rules.sort_values('support', ascending=False)
+            
+            # Get top 50 rules with varying confidence levels
+            for index, rule in rules.head(50).iterrows():
+                antecedent_skus = list(rule['antecedents'])
+                consequent_skus = list(rule['consequents'])
+                
+                # Only process if we have the products in our database
+                if antecedent_skus and consequent_skus:
+                    antecedent_names = [products_dict.get(sku, sku) for sku in antecedent_skus]
+                    consequent_names = [products_dict.get(sku, sku) for sku in consequent_skus]
+                    
+                    bundling_recommendations.append({
+                        'antecedents': ', '.join(antecedent_names),
+                        'consequents': ', '.join(consequent_names),
+                        'support': round(rule['support'], 4),
+                        'confidence': round(rule['confidence'], 4),
+                        'lift': round(rule['lift'], 2),
+                    })
+        else:
+            error_message = "Association rules model file not found. Please ensure the model is trained and saved."
+    
+    except Exception as e:
+        error_message = f"Error loading association rules: {str(e)}"
+    
+    context = {
+        'bundling_recommendations': bundling_recommendations,
+        'error_message': error_message,
+    }
+    return render(request, 'adminpanel/association_rules.html', context)

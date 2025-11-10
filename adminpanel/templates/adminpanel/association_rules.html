@@ -1,0 +1,129 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}Association Rules - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="mb-3">
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="gradient-text"><i class="bi bi-diagram-3"></i> Product Bundling Recommendations</h1>
+            <p class="text-muted">Top 50 Product Pairs Customers Buy Together</p>
+        </div>
+    </div>
+
+    {% if error_message %}
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ error_message }}
+    </div>
+    {% endif %}
+
+    {% if bundling_recommendations %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="modern-card p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 5%;">#</th>
+                                <th style="width: 35%;">Product 1</th>
+                                <th style="width: 3%;" class="text-center">+</th>
+                                <th style="width: 35%;">Product 2</th>
+                                <th style="width: 8%;" class="text-center text-nowrap">
+                                    Support
+                                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="How often bought together"></i>
+                                </th>
+                                <th style="width: 9%;" class="text-center text-nowrap">
+                                    Confidence
+                                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="How likely to buy both"></i>
+                                </th>
+                                <th style="width: 5%;" class="text-center text-nowrap">
+                                    Lift
+                                    <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="Association strength"></i>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in bundling_recommendations %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td><strong>{{ rec.antecedents }}</strong></td>
+                                <td class="text-center">
+                                    <i class="bi bi-plus-circle text-primary"></i>
+                                </td>
+                                <td><strong class="text-success">{{ rec.consequents }}</strong></td>
+                                <td class="text-center">
+                                    <span class="badge bg-info">{{ rec.support }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-success">{{ rec.confidence }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary">{{ rec.lift }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>No product bundling recommendations available.
+    </div>
+    {% endif %}
+
+
+    <div class="row">
+        <div class="col-12">
+            <div class="modern-card p-4">
+                <h4 class="mb-3"><i class="bi bi-lightbulb"></i> How to Use Product Bundling</h4>
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6><i class="bi bi-cart-plus"></i> Bundle Deals</h6>
+                        <p class="small">Offer "Buy together and save" promotions for these product pairs.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6><i class="bi bi-stars"></i> Recommendations</h6>
+                        <p class="small">Show "Frequently bought together" on product pages.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6><i class="bi bi-envelope"></i> Email Marketing</h6>
+                        <p class="small">Suggest complementary products to recent buyers.</p>
+                    </div>
+                </div>
+                <hr>
+                <p class="mb-0 text-muted small">
+                    <strong>Support:</strong> Proportion of transactions containing these products together (e.g., 0.2216 = 22.16% of transactions). 
+                    <strong>Confidence:</strong> Probability that someone buying Product 1 also buys Product 2 (e.g., 0.9900 = 99% likelihood).
+                    <strong>Lift:</strong> How much more likely Product 2 is purchased with Product 1 (higher = stronger association).
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table td {
+        vertical-align: middle;
+    }
+</style>
+
+<script>
+    // Initialize Bootstrap tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}
