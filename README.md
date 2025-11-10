@@ -88,11 +88,7 @@ python3 manage.py shell
 >>> exit()
 ```
 
-6. **Create a superuser** (optional, for admin access)
-```bash
-python3 manage.py createsuperuser
-# Follow the prompts to create admin credentials
-```
+6. **Unzip model.zip into a model folder**
 
 7. **Run the development server**
 ```bash
