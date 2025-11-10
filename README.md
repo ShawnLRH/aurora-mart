@@ -91,7 +91,7 @@ python3 manage.py createsuperuser
 Follow the prompts to set:
 - Username: Enter `admin` (or press Enter to use your system username)
 - Email address: Any valid email (e.g., admin@auroramart.com)
-- Password: At least 8 characters with letters and numbers (ignore "too common" warning if testing locally)
+- Password: At least 8 characters with letters and numbers (ignore "too common" warning if testing locally, just type 'y')
 
 After that, head to http://127.0.0.1:8000/adminpanel/ to access the dashboard for the admin panel.
 
