@@ -1,7 +1,10 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
 from .models import Customer
+import re
 
 class SignUpForm(UserCreationForm):
     # User fields
@@ -117,9 +120,128 @@ class SignUpForm(UserCreationForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Add bootstrap classes to password fields
-        self.fields['password1'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Enter password'})
-        self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Confirm password'})
+        # Add bootstrap classes and help text to password fields
+        self.fields['password1'].widget.attrs.update({
+            'class': 'form-control', 
+            'placeholder': 'Enter password',
+            'minlength': '8'
+        })
+        self.fields['password1'].help_text = (
+            '<small class="form-text text-muted">'
+            'Password must be at least 8 characters and contain:<br>'
+            '• At least one uppercase letter (A-Z)<br>'
+            '• At least one lowercase letter (a-z)<br>'
+            '• At least one number (0-9)<br>'
+            '• At least one special character (!@#$%^&*)'
+            '</small>'
+        )
+        self.fields['password2'].widget.attrs.update({
+            'class': 'form-control', 
+            'placeholder': 'Confirm password'
+        })
+        self.fields['password2'].help_text = '<small class="form-text text-muted">Enter the same password again for verification.</small>'
+
+    def clean_full_name(self):
+        full_name = self.cleaned_data.get('full_name', '').strip()
+        if not full_name:
+            raise ValidationError("Full name is required.")
+        if len(full_name) < 2:
+            raise ValidationError("Full name must be at least 2 characters long.")
+        if not re.match(r'^[a-zA-Z\s\'-]+$', full_name):
+            raise ValidationError("Full name can only contain letters, spaces, hyphens, and apostrophes.")
+        return full_name
+    
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '').lower().strip()
+        if not email:
+            raise ValidationError("Email is required.")
+        # Check if email already exists
+        if User.objects.filter(email=email).exists():
+            raise ValidationError("An account with this email already exists. Please use a different email or login.")
+        if User.objects.filter(username=email).exists():
+            raise ValidationError("An account with this email already exists. Please use a different email or login.")
+        return email
+    
+    def clean_password1(self):
+        password = self.cleaned_data.get('password1')
+        if not password:
+            raise ValidationError("Password is required.")
+        
+        # Minimum length check
+        if len(password) < 8:
+            raise ValidationError("Password must be at least 8 characters long.")
+        
+        # Check for uppercase letter
+        if not re.search(r'[A-Z]', password):
+            raise ValidationError("Password must contain at least one uppercase letter (A-Z).")
+        
+        # Check for lowercase letter
+        if not re.search(r'[a-z]', password):
+            raise ValidationError("Password must contain at least one lowercase letter (a-z).")
+        
+        # Check for digit
+        if not re.search(r'\d', password):
+            raise ValidationError("Password must contain at least one number (0-9).")
+        
+        # Check for special character
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};:\'",.<>?/\\|`~]', password):
+            raise ValidationError("Password must contain at least one special character (!@#$%^&* etc.).")
+        
+        return password
+    
+    def clean_age(self):
+        age = self.cleaned_data.get('age')
+        if age is None:
+            raise ValidationError("Age is required.")
+        if age < 18:
+            raise ValidationError("You must be at least 18 years old to create an account.")
+        if age > 120:
+            raise ValidationError("Please enter a valid age.")
+        return age
+    
+    def clean_gender(self):
+        gender = self.cleaned_data.get('gender')
+        if not gender:
+            raise ValidationError("Please select your gender.")
+        return gender
+    
+    def clean_employment_status(self):
+        employment_status = self.cleaned_data.get('employment_status')
+        if not employment_status:
+            raise ValidationError("Please select your employment status.")
+        return employment_status
+    
+    def clean_occupation(self):
+        occupation = self.cleaned_data.get('occupation')
+        if not occupation:
+            raise ValidationError("Please select your occupation.")
+        return occupation
+    
+    def clean_education(self):
+        education = self.cleaned_data.get('education')
+        if not education:
+            raise ValidationError("Please select your education level.")
+        return education
+    
+    def clean_household_size(self):
+        household_size = self.cleaned_data.get('household_size')
+        if household_size is None:
+            raise ValidationError("Household size is required.")
+        if household_size < 1:
+            raise ValidationError("Household size must be at least 1.")
+        if household_size > 15:
+            raise ValidationError("Please enter a valid household size (maximum 15).")
+        return household_size
+    
+    def clean_monthly_income_sgd(self):
+        income = self.cleaned_data.get('monthly_income_sgd')
+        if income is None:
+            raise ValidationError("Monthly income is required.")
+        if income < 0:
+            raise ValidationError("Monthly income cannot be negative.")
+        if income > 1000000:
+            raise ValidationError("Please enter a valid monthly income.")
+        return income
 
     def save(self, commit=True):
         user = super().save(commit=False)

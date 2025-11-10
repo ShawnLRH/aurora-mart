@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.core.paginator import Paginator
+from django.db.models import Q
 from .models import Product, Customer, Cart, CartItem
 from django.contrib.auth import login
 from .forms import SignUpForm
@@ -127,22 +128,31 @@ def signup(request):
                     
                     messages.success(
                         request, 
-                        f'Welcome {user.first_name}! Based on your profile, we think you\'ll love our {predicted_category} collection.'
+                        f'Account created successfully! We\'ve personalized your experience with {predicted_category} recommendations. Please login with your new credentials.'
                     )
                 except Exception as e:
                     # If AI prediction fails, still allow signup but log the error
-                    messages.success(request, f'Welcome {user.first_name}! Your account has been created successfully.')
+                    messages.success(request, f'Account created successfully! Please login with your new credentials.')
                     import traceback
                     print(f"❌ AI prediction error: {str(e)}")
                     print(traceback.format_exc())
                 
-                login(request, user)
-                return redirect('home')
+                # Redirect to login page instead of auto-login
+                return redirect('login')
             except Exception as e:
                 messages.error(request, f'An error occurred while creating your account. Please try again.')
                 print(f"❌ Signup error: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
         else:
-            messages.error(request, 'Please correct the errors below.')
+            # Display form errors
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                        messages.error(request, error)
+                    else:
+                        field_label = form.fields[field].label if field in form.fields else field
+                        messages.error(request, f"{field_label}: {error}")
     else:
         form = SignUpForm()
     return render(request, 'ecommerce/signup.html', {'form': form})
@@ -259,6 +269,90 @@ def load_data(request):
         </body>
         </html>
         """)
+
+
+def search_products(request):
+    """Search products by name or SKU with keyword highlighting"""
+    query = request.GET.get('search', '').strip()
+    
+    if not query:
+        return redirect('home')
+    
+    # Search in product name, SKU, and description
+    products = Product.objects.filter(
+        Q(product_name__icontains=query) |
+        Q(sku_code__icontains=query) |
+        Q(product_description__icontains=query)
+    )
+    
+    # Get filter parameters
+    sort_by = request.GET.get('sort', 'relevance')
+    min_price = request.GET.get('min_price', '')
+    max_price = request.GET.get('max_price', '')
+    min_rating = request.GET.get('min_rating', '')
+    category_filter = request.GET.get('category', '')
+    
+    # Apply category filter
+    if category_filter:
+        products = products.filter(product_category=category_filter)
+    
+    # Apply price filters
+    if min_price:
+        try:
+            products = products.filter(unit_price__gte=Decimal(min_price))
+        except:
+            pass
+    
+    if max_price:
+        try:
+            products = products.filter(unit_price__lte=Decimal(max_price))
+        except:
+            pass
+    
+    # Apply rating filter
+    if min_rating:
+        try:
+            products = products.filter(product_rating__gte=Decimal(min_rating))
+        except:
+            pass
+    
+    # Apply sorting
+    if sort_by == 'price_low':
+        products = products.order_by('unit_price')
+    elif sort_by == 'price_high':
+        products = products.order_by('-unit_price')
+    elif sort_by == 'rating':
+        products = products.order_by('-product_rating')
+    elif sort_by == 'name':
+        products = products.order_by('product_name')
+    else:  # relevance - prioritize name matches over description
+        products = products.order_by('-product_rating')
+    
+    # Pagination - 12 products per page
+    paginator = Paginator(products, 12)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Get all unique categories for filtering
+    all_categories = Product.objects.values_list('product_category', flat=True).distinct().order_by('product_category')
+    
+    # Get categories from search results
+    result_categories = products.values_list('product_category', flat=True).distinct().order_by('product_category')
+    
+    context = {
+        'query': query,
+        'page_obj': page_obj,
+        'all_categories': all_categories,
+        'result_categories': result_categories,
+        'sort_by': sort_by,
+        'min_price': min_price,
+        'max_price': max_price,
+        'min_rating': min_rating,
+        'category_filter': category_filter,
+        'total_results': paginator.count,
+    }
+    
+    return render(request, 'ecommerce/search.html', context)
 
 
 def category_view(request, category_name):
@@ -400,7 +494,26 @@ def add_to_cart(request, sku):
         product = get_object_or_404(Product, sku_code=sku)
         cart = get_or_create_cart(request.user)
         
-        quantity = int(request.POST.get('quantity', 1))
+        try:
+            quantity = int(request.POST.get('quantity', 1))
+            
+            # Validate quantity
+            if quantity < 1:
+                messages.error(request, 'Quantity must be at least 1.')
+                return redirect('product_detail', sku=sku)
+            
+            if quantity > 100:
+                messages.error(request, 'Maximum quantity per order is 100.')
+                return redirect('product_detail', sku=sku)
+            
+            # Check stock availability
+            if quantity > product.quantity_on_hand:
+                messages.error(request, f'Sorry, only {product.quantity_on_hand} items available in stock.')
+                return redirect('product_detail', sku=sku)
+            
+        except (ValueError, TypeError):
+            messages.error(request, 'Invalid quantity specified.')
+            return redirect('product_detail', sku=sku)
         
         # Check if product already in cart
         cart_item, created = CartItem.objects.get_or_create(
@@ -411,7 +524,14 @@ def add_to_cart(request, sku):
         
         if not created:
             # Update quantity if item already exists
-            cart_item.quantity += quantity
+            new_quantity = cart_item.quantity + quantity
+            
+            # Check if new quantity exceeds stock
+            if new_quantity > product.quantity_on_hand:
+                messages.error(request, f'Cannot add more items. Only {product.quantity_on_hand} available (you have {cart_item.quantity} in cart).')
+                return redirect('product_detail', sku=sku)
+            
+            cart_item.quantity = new_quantity
             cart_item.save()
         
         messages.success(request, f'{product.product_name} added to cart!')
@@ -439,15 +559,35 @@ def update_cart_item(request, item_id):
     """Update quantity of a cart item"""
     if request.method == 'POST':
         cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
-        quantity = int(request.POST.get('quantity', 1))
         
-        if quantity > 0:
-            cart_item.quantity = quantity
-            cart_item.save()
-            messages.success(request, 'Cart updated successfully!')
-        else:
-            cart_item.delete()
-            messages.success(request, 'Item removed from cart!')
+        try:
+            quantity = int(request.POST.get('quantity', 1))
+            
+            # Validate quantity
+            if quantity < 0:
+                messages.error(request, 'Invalid quantity.')
+                return redirect('cart_view')
+            
+            if quantity == 0:
+                cart_item.delete()
+                messages.success(request, 'Item removed from cart!')
+            else:
+                # Check stock availability
+                if quantity > cart_item.product.quantity_on_hand:
+                    messages.error(request, f'Sorry, only {cart_item.product.quantity_on_hand} items available in stock.')
+                    return redirect('cart_view')
+                
+                if quantity > 100:
+                    messages.error(request, 'Maximum quantity per item is 100.')
+                    return redirect('cart_view')
+                
+                cart_item.quantity = quantity
+                cart_item.save()
+                messages.success(request, 'Cart updated successfully!')
+                
+        except (ValueError, TypeError):
+            messages.error(request, 'Invalid quantity specified.')
+            return redirect('cart_view')
         
         # Return JSON response for AJAX requests
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':

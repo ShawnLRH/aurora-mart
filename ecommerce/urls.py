@@ -4,6 +4,7 @@ from django.contrib.auth.views import LoginView, LogoutView
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('search/', views.search_products, name='search_products'),
     path('product/<str:sku>/', views.product_detail, name='product_detail'),
     path('category/<str:category_name>/', views.category_view, name='category_view'),
     path('login/', LoginView.as_view(template_name='ecommerce/login.html'), name='login'),

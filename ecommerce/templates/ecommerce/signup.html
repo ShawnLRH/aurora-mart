@@ -31,6 +31,14 @@
         .form-side::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
         .form-side::-webkit-scrollbar-thumb:hover { background: #555; }
         .helptext { font-size: 0.75rem; color: #6c757d; margin-top: 3px; display: block; }
+        .form-control.is-invalid { border-color: #dc3545; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right calc(.375em + .1875rem) center; background-size: calc(.75em + .375rem) calc(.75em + .375rem); }
+        .password-strength { font-size: 0.75rem; margin-top: 5px; }
+        .password-strength .strength-bar { height: 4px; border-radius: 2px; background-color: #e9ecef; margin-top: 5px; }
+        .password-strength .strength-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s, background-color 0.3s; }
+        .strength-weak { background-color: #dc3545; }
+        .strength-medium { background-color: #ffc107; }
+        .strength-strong { background-color: #28a745; }
+        .required-indicator { color: #dc3545; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -92,45 +100,110 @@
                     <h2>Sign Up</h2>
                     <p class="subtitle">Already Have An Account, <a href="{% url 'login' %}" class="text-decoration-underline">Login</a>.</p>
                     
+                    <!-- Display Django messages -->
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
                     {% if form.errors %}
-                        <div class="alert alert-danger" role="alert">
-                            <strong>Please correct the following errors:</strong>
-                            <ul>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong><i class="bi bi-exclamation-triangle-fill"></i> Please correct the following errors:</strong>
+                            <ul class="mb-0 mt-2">
                                 {% for field in form %}
                                     {% for error in field.errors %}
-                                        <li>{{ field.label }}: {{ error }}</li>
+                                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
                                     {% endfor %}
                                 {% endfor %}
                                 {% for error in form.non_field_errors %}
                                     <li>{{ error }}</li>
                                 {% endfor %}
                             </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% endif %}
 
-                    <form method="post">
+                    <form method="post" id="signupForm" novalidate>
                         {% csrf_token %}
                         
                         <!-- Account Information -->
-                        <h5 class="mb-3 mt-4">Account Information</h5>
+                        <h5 class="mb-3 mt-4">Account Information <span class="required-indicator">*</span></h5>
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                {{ form.full_name.label_tag }}
-                                {{ form.full_name }}
+                                <label for="{{ form.full_name.id_for_label }}" class="form-label">
+                                    {{ form.full_name.label }} <span class="required-indicator">*</span>
+                                </label>
+                                <input type="text" 
+                                       name="{{ form.full_name.name }}" 
+                                       id="{{ form.full_name.id_for_label }}"
+                                       class="form-control {% if form.full_name.errors %}is-invalid{% endif %}"
+                                       placeholder="Enter your full name"
+                                       value="{{ form.full_name.value|default:'' }}"
+                                       required
+                                       minlength="2"
+                                       pattern="^[a-zA-Z\s\'-]+$"
+                                       title="Full name can only contain letters, spaces, hyphens, and apostrophes">
+                                {% if form.full_name.errors %}
+                                    <div class="text-danger mt-1">
+                                        {% for error in form.full_name.errors %}
+                                            <small><i class="bi bi-x-circle"></i> {{ error }}</small><br>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
                             </div>
                             <div class="col-md-6">
-                                {{ form.email.label_tag }}
-                                {{ form.email }}
+                                <label for="{{ form.email.id_for_label }}" class="form-label">
+                                    {{ form.email.label }} <span class="required-indicator">*</span>
+                                </label>
+                                <input type="email" 
+                                       name="{{ form.email.name }}" 
+                                       id="{{ form.email.id_for_label }}"
+                                       class="form-control {% if form.email.errors %}is-invalid{% endif %}"
+                                       placeholder="your.email@example.com"
+                                       value="{{ form.email.value|default:'' }}"
+                                       required
+                                       title="Please enter a valid email address">
+                                {% if form.email.errors %}
+                                    <div class="text-danger mt-1">
+                                        {% for error in form.email.errors %}
+                                            <small><i class="bi bi-x-circle"></i> {{ error }}</small><br>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 {{ form.password1.label_tag }}
                                 {{ form.password1 }}
+                                {% if form.password1.help_text %}
+                                    <div class="mt-2">{{ form.password1.help_text|safe }}</div>
+                                {% endif %}
+                                {% if form.password1.errors %}
+                                    <div class="text-danger mt-1">
+                                        {% for error in form.password1.errors %}
+                                            <small><i class="bi bi-x-circle"></i> {{ error }}</small><br>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
                             </div>
                             <div class="col-md-6">
                                 {{ form.password2.label_tag }}
                                 {{ form.password2 }}
+                                {% if form.password2.help_text %}
+                                    <div class="mt-2">{{ form.password2.help_text|safe }}</div>
+                                {% endif %}
+                                {% if form.password2.errors %}
+                                    <div class="text-danger mt-1">
+                                        {% for error in form.password2.errors %}
+                                            <small><i class="bi bi-x-circle"></i> {{ error }}</small><br>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -212,6 +285,97 @@
         </div>
     </footer>
 
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Real-time password validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const password1 = document.getElementById('id_password1');
+            const password2 = document.getElementById('id_password2');
+            const form = document.getElementById('signupForm');
+            
+            if (password1) {
+                password1.addEventListener('input', function() {
+                    validatePassword(this.value);
+                });
+            }
+            
+            if (password2 && password1) {
+                password2.addEventListener('input', function() {
+                    if (this.value !== password1.value) {
+                        this.setCustomValidity('Passwords do not match');
+                        this.classList.add('is-invalid');
+                    } else {
+                        this.setCustomValidity('');
+                        this.classList.remove('is-invalid');
+                    }
+                });
+            }
+            
+            function validatePassword(password) {
+                const hasUpperCase = /[A-Z]/.test(password);
+                const hasLowerCase = /[a-z]/.test(password);
+                const hasNumber = /\d/.test(password);
+                const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};:'",.<>?/\\|`~]/.test(password);
+                const isLongEnough = password.length >= 8;
+                
+                let strength = 0;
+                if (hasUpperCase) strength++;
+                if (hasLowerCase) strength++;
+                if (hasNumber) strength++;
+                if (hasSpecial) strength++;
+                if (isLongEnough) strength++;
+                
+                // Set custom validity
+                if (!isLongEnough) {
+                    password1.setCustomValidity('Password must be at least 8 characters');
+                } else if (!hasUpperCase) {
+                    password1.setCustomValidity('Password must contain at least one uppercase letter');
+                } else if (!hasLowerCase) {
+                    password1.setCustomValidity('Password must contain at least one lowercase letter');
+                } else if (!hasNumber) {
+                    password1.setCustomValidity('Password must contain at least one number');
+                } else if (!hasSpecial) {
+                    password1.setCustomValidity('Password must contain at least one special character');
+                } else {
+                    password1.setCustomValidity('');
+                }
+            }
+            
+            // Form submission validation
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Show alert for invalid form
+                    const invalidFields = form.querySelectorAll(':invalid');
+                    let errorMessages = [];
+                    
+                    invalidFields.forEach(function(field) {
+                        if (field.validationMessage) {
+                            const label = form.querySelector('label[for="' + field.id + '"]');
+                            const fieldName = label ? label.textContent.replace('*', '').trim() : field.name;
+                            errorMessages.push(fieldName + ': ' + field.validationMessage);
+                        }
+                    });
+                    
+                    if (errorMessages.length > 0) {
+                        alert('Please correct the following errors:\n\n' + errorMessages.join('\n'));
+                    }
+                }
+                
+                form.classList.add('was-validated');
+            });
+            
+            // Auto-dismiss alerts after 10 seconds
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 10000);
+            });
+        });
+    </script>
 </body>
 </html>
