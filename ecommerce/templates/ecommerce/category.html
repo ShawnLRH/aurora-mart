@@ -1,0 +1,385 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ category_name }} - Aurora-Mart</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .category-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 0;
+            margin-bottom: 30px;
+        }
+        .filter-sidebar {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+        }
+        .product-card {
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .product-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        .product-card-body {
+            padding: 15px;
+        }
+        .price {
+            color: #28a745;
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+        .rating {
+            color: #ffc107;
+        }
+        .pagination {
+            margin-top: 30px;
+        }
+        .filter-title {
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .form-label {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .btn-filter {
+            background-color: #667eea;
+            color: white;
+            width: 100%;
+        }
+        .btn-filter:hover {
+            background-color: #5568d3;
+            color: white;
+        }
+        .btn-reset {
+            background-color: #6c757d;
+            color: white;
+            width: 100%;
+        }
+        .category-list {
+            list-style: none;
+            padding: 0;
+        }
+        .category-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .category-list a {
+            text-decoration: none;
+            color: #495057;
+        }
+        .category-list a:hover {
+            color: #667eea;
+        }
+        .category-list a.active {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        /* Pure CSS dropdown */
+        .navbar-nav {
+            align-items: center;
+        }
+        .navbar-nav .nav-item {
+            display: flex;
+            align-items: center;
+        }
+        .navbar-nav .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+        }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+        }
+        .dropdown {
+            position: relative;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            padding: 0.5rem 0;
+            z-index: 1000;
+            margin-top: 0;
+            border: 1px solid #e9ecef;
+        }
+        .dropdown:hover .dropdown-menu,
+        .dropdown-menu:hover {
+            display: block;
+        }
+        .dropdown-item {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 1rem;
+            clear: both;
+            font-weight: 400;
+            color: #212529;
+            text-align: inherit;
+            text-decoration: none;
+            white-space: nowrap;
+            background-color: transparent;
+            border: 0;
+        }
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+        .dropdown-divider {
+            height: 0;
+            margin: 0.5rem 0;
+            overflow: hidden;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-xl navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <img src="{% static 'images/AuroraMartLogo.png' %}" alt="Aurora-Mart Logo" height="40">
+            </a>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Home</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="#">Categories</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Blog</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#">Contact</a></li>
+                </ul>
+                <form class="d-flex me-4" method="get">
+                    <input class="form-control me-2" type="search" name="search" placeholder="Search" aria-label="Search">
+                    <button class="btn btn-outline-success" type="submit">Search</button>
+                </form>
+                <ul class="navbar-nav">
+                    <li class="nav-item me-3">
+                        {% if user.is_authenticated %}
+                            <a class="nav-link" href="{% url 'cart_view' %}">
+                                <i class="bi bi-cart"></i> Cart ({{ cart_count }})
+                            </a>
+                        {% else %}
+                            <a class="nav-link" href="{% url 'signup' %}">
+                                <i class="bi bi-cart"></i> Cart (0)
+                            </a>
+                        {% endif %}
+                    </li>
+                    {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link" href="#" id="userDropdown">
+                                <i class="bi bi-person-circle"></i> {{ user.first_name }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="bi bi-person"></i> My Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="post" action="{% url 'logout' %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right"></i> Logout</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'signup' %}">Sign Up</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Category Header -->
+    <div class="category-header">
+        <div class="container">
+            <h1><i class="bi bi-grid-3x3-gap-fill"></i> {{ category_name }}</h1>
+            <p class="mb-0">{{ total_products }} product{% if total_products != 1 %}s{% endif %} available</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mb-5">
+        <div class="row">
+            <!-- Sidebar Filters -->
+            <div class="col-lg-3 mb-4">
+                <div class="filter-sidebar">
+                    <h5 class="filter-title"><i class="bi bi-funnel"></i> Filters</h5>
+                    
+                    <form method="get">
+                        <!-- Sort By -->
+                        <div class="mb-3">
+                            <label for="sort" class="form-label">Sort By</label>
+                            <select class="form-select" id="sort" name="sort">
+                                <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
+                                <option value="price_low" {% if sort_by == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+                                <option value="price_high" {% if sort_by == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                                <option value="rating" {% if sort_by == 'rating' %}selected{% endif %}>Highest Rated</option>
+                            </select>
+                        </div>
+
+                        <!-- Price Range -->
+                        <div class="mb-3">
+                            <label class="form-label">Price Range ($)</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="number" class="form-control" name="min_price" placeholder="Min" value="{{ min_price }}" min="0" step="0.01">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control" name="max_price" placeholder="Max" value="{{ max_price }}" min="0" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rating Filter -->
+                        <div class="mb-3">
+                            <label for="min_rating" class="form-label">Minimum Rating</label>
+                            <select class="form-select" id="min_rating" name="min_rating">
+                                <option value="">All Ratings</option>
+                                <option value="4" {% if min_rating == '4' %}selected{% endif %}>4+ Stars</option>
+                                <option value="3" {% if min_rating == '3' %}selected{% endif %}>3+ Stars</option>
+                                <option value="2" {% if min_rating == '2' %}selected{% endif %}>2+ Stars</option>
+                                <option value="1" {% if min_rating == '1' %}selected{% endif %}>1+ Stars</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-filter mb-2">
+                            <i class="bi bi-check-circle"></i> Apply Filters
+                        </button>
+                        <a href="{% url 'category_view' category_name %}" class="btn btn-reset">
+                            <i class="bi bi-arrow-clockwise"></i> Reset
+                        </a>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <!-- Categories List -->
+                    <h5 class="filter-title mt-4"><i class="bi bi-list-ul"></i> All Categories</h5>
+                    <ul class="category-list">
+                        {% for cat in all_categories %}
+                            <li>
+                                <a href="{% url 'category_view' cat %}" class="{% if cat == category_name %}active{% endif %}">
+                                    {{ cat }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Products Grid -->
+            <div class="col-lg-9">
+                {% if page_obj %}
+                    <div class="row">
+                        {% for product in page_obj %}
+                            <div class="col-md-4 mb-4">
+                                <div class="product-card">
+                                    <a href="{% url 'product_detail' product.sku_code %}" style="text-decoration: none; color: inherit;">
+                                        <img src="{% static 'images/basicItem.jpg' %}" alt="{{ product.product_name }}">
+                                        <div class="product-card-body">
+                                            <h6 class="mb-2">{{ product.product_name|truncatewords:8 }}</h6>
+                                            <p class="text-muted small mb-2">{{ product.product_subcategory }}</p>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="price">${{ product.unit_price }}</span>
+                                                <span class="rating">
+                                                    <i class="bi bi-star-fill"></i> {{ product.product_rating }}
+                                                </span>
+                                            </div>
+                                            {% if product.quantity_on_hand > 0 %}
+                                                <span class="badge bg-success mt-2">In Stock</span>
+                                            {% else %}
+                                                <span class="badge bg-danger mt-2">Out of Stock</span>
+                                            {% endif %}
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if min_rating %}&min_rating={{ min_rating }}{% endif %}">First</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if min_rating %}&min_rating={{ min_rating }}{% endif %}">Previous</a>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if min_rating %}&min_rating={{ min_rating }}{% endif %}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if min_rating %}&min_rating={{ min_rating }}{% endif %}">Next</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if sort_by %}&sort={{ sort_by }}{% endif %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if min_rating %}&min_rating={{ min_rating }}{% endif %}">Last</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox" style="font-size: 4rem; color: #ccc;"></i>
+                        <h3 class="mt-3">No products found</h3>
+                        <p class="text-muted">Try adjusting your filters</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="background-color: #343a40; color: white; padding: 40px 0;">
+        <div class="container text-center">
+            <p>&copy; 2025 Aurora-Mart. All rights reserved.</p>
+            <ul class="list-inline">
+                <li class="list-inline-item"><a href="#" class="text-white">Privacy Policy</a></li>
+                <li class="list-inline-item"><a href="#" class="text-white">Terms of Service</a></li>
+                <li class="list-inline-item"><a href="#" class="text-white">Contact Us</a></li>
+            </ul>
+        </div>
+    </footer>
+</body>
+</html>

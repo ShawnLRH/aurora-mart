@@ -2,31 +2,95 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.core.paginator import Paginator
 from .models import Product, Customer, Cart, CartItem
 from django.contrib.auth import login
 from .forms import SignUpForm
+from .ai_utils import get_category_predictor, get_product_recommender
 import csv
 import os
 from django.conf import settings
 from decimal import Decimal
 
 def home(request):
-    products = Product.objects.all()
-    featured_products = products[:4]
-    popular_products = products[4:8]
+    # Personalize product recommendations based on user's preferred category
+    if request.user.is_authenticated and hasattr(request.user, 'customer'):
+        customer = request.user.customer
+        if customer.preferred_category:
+            # Show products from user's preferred category first
+            featured_products = Product.objects.filter(
+                product_category=customer.preferred_category
+            ).order_by('-product_rating')[:4]
+            
+            print(f"🎯 Personalized home for {request.user.email}: {customer.preferred_category} ({featured_products.count()} products found)")
+            
+            # If not enough products in preferred category, fill with top-rated products
+            if featured_products.count() < 4:
+                remaining_count = 4 - featured_products.count()
+                other_products = Product.objects.exclude(
+                    product_category=customer.preferred_category
+                ).order_by('-product_rating')[:remaining_count]
+                featured_products = list(featured_products) + list(other_products)
+                print(f"   Added {remaining_count} products from other categories")
+        else:
+            # Default: show top-rated products
+            print(f"⚠️  User {request.user.email} has no preferred category, showing top-rated")
+            featured_products = Product.objects.all().order_by('-product_rating')[:4]
+    else:
+        # For anonymous users, show top-rated products
+        print(f"👤 Anonymous user, showing top-rated products")
+        featured_products = Product.objects.all().order_by('-product_rating')[:4]
+    
+    # Popular products: best sellers (highest rated)
+    popular_products = Product.objects.all().order_by('-product_rating')[4:8]
+    
+    # Get all categories for navigation
+    all_categories = Product.objects.values_list('product_category', flat=True).distinct().order_by('product_category')
     
     context = {
         'featured_products': featured_products,
         'popular_products': popular_products,
+        'all_categories': all_categories,
     }
     return render(request, 'ecommerce/home.html', context)
 
 def product_detail(request, sku):
     product = get_object_or_404(Product, sku_code=sku)
-    related_products = Product.objects.filter(product_category=product.product_category).exclude(id=product.id)[:4]
+    
+    # Use AI to get "Frequently Bought Together" recommendations
+    frequently_bought_together = []
+    try:
+        recommender = get_product_recommender()
+        recommendations = recommender.get_frequently_bought_together(sku, top_n=4)
+        
+        # Fetch product objects for the recommendations
+        for rec in recommendations:
+            try:
+                rec_product = Product.objects.get(sku_code=rec['sku'])
+                frequently_bought_together.append({
+                    'product': rec_product,
+                    'confidence': rec['confidence'],
+                    'lift': rec['lift']
+                })
+            except Product.DoesNotExist:
+                continue
+    except Exception as e:
+        print(f"Association rules error: {str(e)}")
+    
+    # Fallback: show related products from same category if no AI recommendations
+    if not frequently_bought_together:
+        related_products = Product.objects.filter(
+            product_category=product.product_category
+        ).exclude(id=product.id)[:4]
+        frequently_bought_together = [{'product': p, 'confidence': None, 'lift': None} for p in related_products]
+    
+    # Get all categories for navbar dropdown
+    all_categories = Product.objects.values_list('product_category', flat=True).distinct().order_by('product_category')
+    
     context = {
         'product': product,
-        'related_products': related_products,
+        'frequently_bought_together': frequently_bought_together,
+        'all_categories': all_categories,
     }
     return render(request, 'ecommerce/product.html', context)
 
@@ -36,11 +100,47 @@ def signup(request):
         if form.is_valid():
             try:
                 user = form.save()
+                
+                # Use AI to predict preferred category based on demographic data
+                try:
+                    customer = user.customer
+                    predictor = get_category_predictor()
+                    
+                    # Prepare data for prediction
+                    customer_data = {
+                        'age': customer.age,
+                        'household_size': customer.household_size,
+                        'has_children': 1 if customer.has_children else 0,
+                        'monthly_income_sgd': float(customer.monthly_income_sgd),
+                        'gender': customer.gender,
+                        'employment_status': customer.employment_status,
+                        'occupation': customer.occupation,
+                        'education': customer.education
+                    }
+                    
+                    # Predict and update customer's preferred category
+                    predicted_category = predictor.predict_category(customer_data)
+                    customer.preferred_category = predicted_category
+                    customer.save()
+                    
+                    print(f"✅ AI Prediction for {user.email}: {predicted_category}")
+                    
+                    messages.success(
+                        request, 
+                        f'Welcome {user.first_name}! Based on your profile, we think you\'ll love our {predicted_category} collection.'
+                    )
+                except Exception as e:
+                    # If AI prediction fails, still allow signup but log the error
+                    messages.success(request, f'Welcome {user.first_name}! Your account has been created successfully.')
+                    import traceback
+                    print(f"❌ AI prediction error: {str(e)}")
+                    print(traceback.format_exc())
+                
                 login(request, user)
-                messages.success(request, f'Welcome {user.first_name}! Your account has been created successfully.')
                 return redirect('home')
             except Exception as e:
                 messages.error(request, f'An error occurred while creating your account. Please try again.')
+                print(f"❌ Signup error: {str(e)}")
         else:
             messages.error(request, 'Please correct the errors below.')
     else:
@@ -161,6 +261,69 @@ def load_data(request):
         """)
 
 
+def category_view(request, category_name):
+    """Display products in a category with filters and pagination"""
+    # Get all products in this category
+    products = Product.objects.filter(product_category=category_name)
+    
+    # Get filter parameters
+    sort_by = request.GET.get('sort', 'name')  # default: name
+    min_price = request.GET.get('min_price', '')
+    max_price = request.GET.get('max_price', '')
+    min_rating = request.GET.get('min_rating', '')
+    
+    # Apply price filters
+    if min_price:
+        try:
+            products = products.filter(unit_price__gte=Decimal(min_price))
+        except:
+            pass
+    
+    if max_price:
+        try:
+            products = products.filter(unit_price__lte=Decimal(max_price))
+        except:
+            pass
+    
+    # Apply rating filter
+    if min_rating:
+        try:
+            products = products.filter(product_rating__gte=Decimal(min_rating))
+        except:
+            pass
+    
+    # Apply sorting
+    if sort_by == 'price_low':
+        products = products.order_by('unit_price')
+    elif sort_by == 'price_high':
+        products = products.order_by('-unit_price')
+    elif sort_by == 'rating':
+        products = products.order_by('-product_rating')
+    else:  # default to name
+        products = products.order_by('product_name')
+    
+    # Pagination - 12 products per page
+    paginator = Paginator(products, 12)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Get all unique categories for the sidebar
+    all_categories = Product.objects.values_list('product_category', flat=True).distinct().order_by('product_category')
+    
+    context = {
+        'category_name': category_name,
+        'page_obj': page_obj,
+        'all_categories': all_categories,
+        'sort_by': sort_by,
+        'min_price': min_price,
+        'max_price': max_price,
+        'min_rating': min_rating,
+        'total_products': paginator.count,
+    }
+    
+    return render(request, 'ecommerce/category.html', context)
+
+
 def get_or_create_cart(user):
     """Helper function to get or create a cart for the user"""
     if user.is_authenticated:
@@ -173,8 +336,59 @@ def get_or_create_cart(user):
 def cart_view(request):
     """Display the user's shopping cart"""
     cart = get_or_create_cart(request.user)
+    
+    # Use AI to get "Complete the Set" recommendations based on cart items
+    cart_recommendations = []
+    recommendations_type = None  # Track if AI or fallback
+    
+    if cart.items.exists():
+        try:
+            recommender = get_product_recommender()
+            cart_skus = [item.product.sku_code for item in cart.items.all()]
+            recommended_skus = recommender.get_cart_recommendations(cart_skus, top_n=4)
+            
+            # Fetch product objects for recommendations
+            for sku in recommended_skus:
+                try:
+                    rec_product = Product.objects.get(sku_code=sku)
+                    cart_recommendations.append(rec_product)
+                except Product.DoesNotExist:
+                    continue
+            
+            if cart_recommendations:
+                recommendations_type = 'ai'
+                print(f"🤖 AI found {len(cart_recommendations)} cart recommendations")
+            
+        except Exception as e:
+            print(f"Cart recommendations error: {str(e)}")
+        
+        # Fallback: If no AI recommendations, show related products from cart categories
+        if not cart_recommendations:
+            print(f"💡 No AI recommendations, using category fallback")
+            recommendations_type = 'category'
+            
+            # Get categories from cart items
+            cart_categories = set(item.product.product_category for item in cart.items.all())
+            cart_product_ids = [item.product.id for item in cart.items.all()]
+            
+            # Find related products from same categories, excluding items already in cart
+            for category in cart_categories:
+                category_products = Product.objects.filter(
+                    product_category=category
+                ).exclude(
+                    id__in=cart_product_ids
+                ).order_by('-product_rating')[:2]  # 2 per category
+                
+                cart_recommendations.extend(list(category_products))
+            
+            # Limit to 4 total recommendations
+            cart_recommendations = cart_recommendations[:4]
+            print(f"   Found {len(cart_recommendations)} category-based recommendations")
+    
     context = {
         'cart': cart,
+        'cart_recommendations': cart_recommendations,
+        'recommendations_type': recommendations_type,
     }
     return render(request, 'ecommerce/cart.html', context)
 
@@ -209,6 +423,11 @@ def add_to_cart(request, sku):
                 'message': f'{product.product_name} added to cart!',
                 'cart_total': cart.total_items
             })
+        
+        # Check if request came from cart page (recommendations)
+        from_cart = request.POST.get('from_cart', False)
+        if from_cart:
+            return redirect('cart_view')
         
         return redirect('product_detail', sku=sku)
     
@@ -274,3 +493,107 @@ def clear_cart(request):
         messages.success(request, 'Cart cleared!')
     
     return redirect('cart_view')
+
+
+@login_required
+def profile(request):
+    """User profile page with update and delete functionality"""
+    customer = request.user.customer
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'update':
+            # Update profile information
+            try:
+                user = request.user
+                user.first_name = request.POST.get('first_name')
+                user.last_name = request.POST.get('last_name')
+                user.email = request.POST.get('email')
+                user.username = request.POST.get('email')  # Username is email
+                user.save()
+                
+                # Update customer information
+                customer.age = int(request.POST.get('age'))
+                customer.gender = request.POST.get('gender')
+                customer.employment_status = request.POST.get('employment_status')
+                customer.occupation = request.POST.get('occupation')
+                customer.education = request.POST.get('education')
+                customer.household_size = int(request.POST.get('household_size'))
+                customer.has_children = request.POST.get('has_children') == '1'
+                customer.monthly_income_sgd = Decimal(request.POST.get('monthly_income_sgd'))
+                customer.save()
+                
+                # Re-predict preferred category with updated info
+                try:
+                    predictor = get_category_predictor()
+                    customer_data = {
+                        'age': customer.age,
+                        'household_size': customer.household_size,
+                        'has_children': 1 if customer.has_children else 0,
+                        'monthly_income_sgd': float(customer.monthly_income_sgd),
+                        'gender': customer.gender,
+                        'employment_status': customer.employment_status,
+                        'occupation': customer.occupation,
+                        'education': customer.education
+                    }
+                    predicted_category = predictor.predict_category(customer_data)
+                    customer.preferred_category = predicted_category
+                    customer.save()
+                    
+                    messages.success(
+                        request, 
+                        f'Profile updated successfully! Your AI preference has been updated to {predicted_category}.'
+                    )
+                    print(f"✅ Profile updated for {user.email}: New category = {predicted_category}")
+                except Exception as e:
+                    messages.success(request, 'Profile updated successfully!')
+                    print(f"⚠️ AI prediction failed during profile update: {str(e)}")
+                
+            except Exception as e:
+                messages.error(request, f'Error updating profile: {str(e)}')
+                print(f"❌ Profile update error: {str(e)}")
+        
+        elif action == 'change_password':
+            # Change password
+            current_password = request.POST.get('current_password')
+            new_password = request.POST.get('new_password')
+            confirm_password = request.POST.get('confirm_password')
+            
+            if not all([current_password, new_password, confirm_password]):
+                messages.error(request, 'All password fields are required.')
+            elif new_password != confirm_password:
+                messages.error(request, 'New passwords do not match.')
+            elif len(new_password) < 8:
+                messages.error(request, 'Password must be at least 8 characters long.')
+            elif not request.user.check_password(current_password):
+                messages.error(request, 'Current password is incorrect.')
+            else:
+                request.user.set_password(new_password)
+                request.user.save()
+                # Re-login user after password change
+                from django.contrib.auth import update_session_auth_hash
+                update_session_auth_hash(request, request.user)
+                messages.success(request, 'Password changed successfully!')
+                print(f"✅ Password changed for {request.user.email}")
+        
+        elif action == 'delete_account':
+            # Delete account
+            delete_password = request.POST.get('delete_password')
+            
+            if not request.user.check_password(delete_password):
+                messages.error(request, 'Incorrect password. Account not deleted.')
+            else:
+                # Delete user (will cascade delete customer and cart)
+                username = request.user.email
+                request.user.delete()
+                messages.success(request, 'Your account has been permanently deleted. We\'re sorry to see you go.')
+                print(f"🗑️ Account deleted: {username}")
+                return redirect('home')
+        
+        return redirect('profile')
+    
+    context = {
+        'customer': customer,
+    }
+    return render(request, 'ecommerce/profile.html', context)

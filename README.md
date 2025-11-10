@@ -18,12 +18,20 @@ A complete B2C e-commerce web application using Python and Django conforming to 
 
 ## Features
 
-- 🛍️ Product catalog with categories and search
-- 👤 User authentication (login, signup, logout)
-- 🛒 Product detail pages with ratings
-- 📊 Customer and product data management
-- 💾 SQLite database with sample data
-- 📱 Responsive design
+### Core E-commerce
+- 🛍️ Product catalog with 500 SKUs across multiple categories
+- 👤 User authentication (signup, login, logout)
+- 🛒 Persistent shopping cart with AJAX updates
+- 📦 Product detail pages with ratings and stock information
+- � SQLite database with sample data
+- 📱 Responsive Bootstrap design
+
+### AI-Powered Personalization 🤖
+- **Decision Tree Classification**: Predicts preferred product category based on demographic data during signup
+- **Association Rules Mining**: Provides "Frequently Bought Together" recommendations
+- **Smart Cart Suggestions**: "Complete the Set" recommendations based on cart contents
+- **Personalized Home Page**: Featured products tailored to user's predicted preferences
+- **Data-Driven**: Trained on 50,000 real transaction records
 
 ## Setup Instructions
 
@@ -58,7 +66,7 @@ pip install -r requirements.txt
 
 If `requirements.txt` doesn't exist or you prefer manual installation:
 ```bash
-pip install django
+pip install django scikit-learn pandas mlxtend joblib
 ```
 
 4. **Initialize the database**
@@ -122,23 +130,32 @@ Simply visit http://127.0.0.1:8000/loaddata/ while the server is running. The pa
 
 ```
 aurora-mart/
-├── aurora/              # Main project settings
-│   ├── settings.py     # Django configuration
-│   ├── urls.py         # Main URL routing
-│   └── wsgi.py         # WSGI configuration
-├── ecommerce/          # Main application
-│   ├── models.py       # Database models (Customer, Product)
-│   ├── views.py        # View functions
-│   ├── urls.py         # App URL routing
-│   ├── forms.py        # Form definitions
-│   ├── templates/      # HTML templates
-│   └── migrations/     # Database migrations
-├── data/               # CSV data files
-│   ├── b2c_customers_100.csv
-│   └── b2c_products_500.csv
-├── static/             # Static files (CSS, JS, images)
-├── db.sqlite3          # SQLite database
-└── manage.py           # Django management script
+├── aurora/                      # Main project settings
+│   ├── settings.py             # Django configuration
+│   ├── urls.py                 # Main URL routing
+│   └── wsgi.py                 # WSGI configuration
+├── ecommerce/                  # Main application
+│   ├── models.py               # Database models (Customer, Product, Cart)
+│   ├── views.py                # View functions with AI integration
+│   ├── urls.py                 # App URL routing
+│   ├── forms.py                # Form definitions (enhanced signup)
+│   ├── ai_utils.py             # AI model utilities (NEW)
+│   ├── context_processors.py  # Global template context
+│   ├── templates/              # HTML templates
+│   └── migrations/             # Database migrations
+├── model/                      # AI models (NEW)
+│   ├── b2c_customers_100.joblib              # Decision Tree model
+│   ├── b2c_products_500_transactions_50k.joblib  # Association Rules
+│   ├── decision_tree_classifier.ipynb        # Model training notebook
+│   └── association_rules_mining.ipynb        # Rules training notebook
+├── data/                       # CSV data files
+│   ├── b2c_customers_100.csv               # Customer demographics
+│   ├── b2c_products_500.csv                # Product catalog
+│   └── b2c_products_500_transactions_50k.csv  # Transaction history
+├── static/                     # Static files (CSS, JS, images)
+├── db.sqlite3                  # SQLite database
+├── AI_TESTING_GUIDE.md         # AI testing instructions (NEW)
+└── manage.py                   # Django management script
 ```
 
 ## Models
@@ -157,12 +174,52 @@ aurora-mart/
 - Stock quantity and reorder levels
 - Unit price and rating
 
+### Cart Models
+- **Cart**: One-to-one with User, tracks total items and subtotal
+- **CartItem**: Links products to carts with quantity, enforces unique constraints
+
+### AI Models
+- **Decision Tree**: Trained on 100 customer profiles, predicts 1 of 10+ product categories
+- **Association Rules**: Extracted from 50k transactions, confidence threshold 99%, min support 22%
+
 ## Usage
 
+### Standard E-commerce Flow
 1. **Browse Products**: Visit the home page to see featured and popular products
-2. **View Details**: Click on any product to see detailed information
-3. **Sign Up**: Create an account to access personalized features
-4. **Login**: Access your account with credentials
+2. **View Details**: Click on any product to see detailed information and AI recommendations
+3. **Sign Up**: Create an account with demographic data for personalized experience
+4. **Add to Cart**: Add products to your persistent shopping cart
+5. **Checkout**: Review cart with "Complete the Set" AI suggestions
+
+### AI Features in Action
+
+#### 1. Cold-Start Personalization (Signup)
+When a new user signs up, they provide:
+- Age, gender, employment status, occupation
+- Education, household size, income range
+
+The **Decision Tree Classifier** predicts their preferred product category and shows:
+*"Welcome John! Based on your profile, we think you'll love our Electronics collection."*
+
+#### 2. Personalized Home Page
+Logged-in users see products from their predicted category first:
+- Featured products filtered by AI-predicted preference
+- Sorted by highest ratings
+- Fallback to top-rated products if category has few items
+
+#### 3. Frequently Bought Together (Product Pages)
+On any product page, see AI-powered recommendations:
+- Products customers frequently purchase together
+- Confidence scores showing match strength
+- Based on association rules from 50k transactions
+
+#### 4. Complete the Set (Shopping Cart)
+When viewing cart, get intelligent suggestions:
+- Products that complement current cart items
+- Uses high-lift association rules
+- Quick "Add to Cart" buttons for one-click addition
+
+See **AI_TESTING_GUIDE.md** for detailed testing instructions.
 
 ## Troubleshooting
 
@@ -194,10 +251,24 @@ To run in development mode with debug enabled:
 
 ## Technologies Used
 
-- **Backend**: Python 3.x, Django 5.x
-- **Database**: SQLite3
-- **Frontend**: HTML, CSS, JavaScript
-- **Data**: CSV files for bulk import
+### Backend & Framework
+- **Python 3.x**: Core programming language
+- **Django 5.x**: Web framework with ORM, authentication, migrations
+
+### Machine Learning & AI
+- **scikit-learn**: Decision Tree Classifier for category prediction
+- **mlxtend**: Association Rules Mining (Apriori algorithm)
+- **pandas**: Data manipulation for AI models
+- **joblib**: Model serialization and loading
+
+### Frontend
+- **Bootstrap 5.3.3**: Responsive UI framework
+- **Bootstrap Icons**: Icon library
+- **JavaScript/AJAX**: Dynamic cart updates without page reload
+
+### Database & Data
+- **SQLite3**: Embedded database
+- **CSV Import**: Bulk data loading (100 customers, 500 products, 50k transactions)
 
 ## License
 

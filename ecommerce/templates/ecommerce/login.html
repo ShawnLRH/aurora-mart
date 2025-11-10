@@ -52,10 +52,10 @@
                     </li>
                     {% if user.is_authenticated %}
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link" href="#" id="userDropdown">
                                 Hello, {{ user.first_name }}
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <ul class="dropdown-menu dropdown-menu-end">
                                 <li>
                                     <form method="post" action="{% url 'logout' %}">
                                         {% csrf_token %}
@@ -87,10 +87,9 @@
                             <label for="username">Enter Your Email Or Phone</label>
                             <input type="text" class="form-control" id="username" name="username" placeholder="michael.joe@example.com" required>
                         </div>
-                        <div class="mb-3 password-wrapper">
+                        <div class="mb-3">
                             <label for="password">Enter Your Password</label>
                             <input type="password" class="form-control" id="password" name="password" placeholder="********" required>
-                            <i class="bi bi-eye-slash" onclick="togglePassword('password', this)"></i>
                         </div>
                         <button type="submit" class="btn btn-black w-100">Login</button>
                     </form>
@@ -116,21 +115,5 @@
             </ul>
         </div>
     </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function togglePassword(fieldId, icon) {
-            const field = document.getElementById(fieldId);
-            if (field.type === 'password') {
-                field.type = 'text';
-                icon.classList.remove('bi-eye-slash');
-                icon.classList.add('bi-eye');
-            } else {
-                field.type = 'password';
-                icon.classList.remove('bi-eye');
-                icon.classList.add('bi-eye-slash');
-            }
-        }
-    </script>
 </body>
 </html>

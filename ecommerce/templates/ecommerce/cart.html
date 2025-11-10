@@ -7,6 +7,17 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+                display: none;
+            }
+        }
         body {
             background-color: #f8f9fa;
             font-family: Arial, sans-serif;
@@ -163,6 +174,67 @@
             padding: 40px 0;
             margin-top: 60px;
         }
+        
+        /* Pure CSS dropdown */
+        .navbar-nav {
+            align-items: center;
+        }
+        .navbar-nav .nav-item {
+            display: flex;
+            align-items: center;
+        }
+        .navbar-nav .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+        }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+        }
+        .dropdown {
+            position: relative;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            padding: 0.5rem 0;
+            z-index: 1000;
+            margin-top: 0;
+            border: 1px solid #e9ecef;
+        }
+        .dropdown:hover .dropdown-menu,
+        .dropdown-menu:hover {
+            display: block;
+        }
+        .dropdown-item {
+            display: block;
+            width: 100%;
+            padding: 0.5rem 1rem;
+            clear: both;
+            font-weight: 400;
+            color: #212529;
+            text-align: inherit;
+            text-decoration: none;
+            white-space: nowrap;
+            background-color: transparent;
+            border: 0;
+        }
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+        .dropdown-divider {
+            height: 0;
+            margin: 0.5rem 0;
+            overflow: hidden;
+            border-top: 1px solid #dee2e6;
+        }
     </style>
 </head>
 <body>
@@ -202,14 +274,16 @@
                     </li>
                     {% if user.is_authenticated %}
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                Hello, {{ user.first_name }}
+                            <a class="nav-link" href="#" id="userDropdown">
+                                <i class="bi bi-person-circle"></i> {{ user.first_name }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="bi bi-person"></i> My Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form method="post" action="{% url 'logout' %}">
                                         {% csrf_token %}
-                                        <button type="submit" class="dropdown-item">Logout</button>
+                                        <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right"></i> Logout</button>
                                     </form>
                                 </li>
                             </ul>
@@ -228,9 +302,8 @@
         <!-- Messages -->
         {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <div class="alert alert-{{ message.tags }}" role="alert" style="animation: fadeOut 0.5s ease-in-out 4.5s forwards;">
                     {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             {% endfor %}
         {% endif %}
@@ -252,19 +325,26 @@
                                 <div class="cart-item-price mt-2">${{ item.product.unit_price }}</div>
                             </div>
                             <div class="quantity-control">
-                                <button onclick="updateQuantity({{ item.id }}, {{ item.quantity }} - 1)">
-                                    <i class="bi bi-dash"></i>
-                                </button>
-                                <input type="number" value="{{ item.quantity }}" min="1" id="quantity-{{ item.id }}" 
-                                       onchange="updateQuantity({{ item.id }}, this.value)" readonly>
-                                <button onclick="updateQuantity({{ item.id }}, {{ item.quantity }} + 1)">
-                                    <i class="bi bi-plus"></i>
-                                </button>
+                                <form method="post" action="{% url 'update_cart_item' item.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="quantity" value="{{ item.quantity|add:'-1' }}">
+                                    <button type="submit" {% if item.quantity <= 1 %}disabled{% endif %}>
+                                        <i class="bi bi-dash"></i>
+                                    </button>
+                                </form>
+                                <input type="number" value="{{ item.quantity }}" min="1" readonly>
+                                <form method="post" action="{% url 'update_cart_item' item.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="quantity" value="{{ item.quantity|add:'1' }}">
+                                    <button type="submit">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </form>
                             </div>
                             <div class="ms-4">
-                                <div class="fw-bold" id="item-total-{{ item.id }}">${{ item.total_price }}</div>
+                                <div class="fw-bold">${{ item.total_price }}</div>
                             </div>
-                            <form method="post" action="{% url 'remove_from_cart' item.id %}" class="ms-3" onsubmit="return removeItem(event, {{ item.id }})">
+                            <form method="post" action="{% url 'remove_from_cart' item.id %}" class="ms-3">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-remove" title="Remove">
                                     <i class="bi bi-trash"></i>
@@ -290,7 +370,7 @@
                             <span id="cart-total">${{ cart.total|default:"0.00" }}</span>
                         </div>
                         <button class="btn-checkout">Proceed to Checkout</button>
-                        <form method="post" action="{% url 'clear_cart' %}" onsubmit="return confirm('Are you sure you want to clear your cart?')">
+                        <form method="post" action="{% url 'clear_cart' %}">
                             {% csrf_token %}
                             <button type="submit" class="btn-clear">Clear Cart</button>
                         </form>
@@ -300,6 +380,66 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Complete the Set (AI-Powered Recommendations) -->
+            {% if cart_recommendations %}
+            <div class="row mt-5">
+                <div class="col-12">
+                    <div class="cart-header">
+                        <h3 class="mb-2">
+                            {% if recommendations_type == 'ai' %}
+                                <i class="bi bi-stars text-warning"></i> Complete the Set
+                            {% else %}
+                                <i class="bi bi-lightbulb text-info"></i> You Might Also Like
+                            {% endif %}
+                        </h3>
+                        <p class="text-muted mb-0">
+                            {% if recommendations_type == 'ai' %}
+                                AI-powered recommendations based on your cart
+                            {% else %}
+                                Related products from your cart categories
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                {% for product in cart_recommendations %}
+                    <div class="col-md-3 mb-4">
+                        <div class="card h-100" style="border: 2px solid {% if recommendations_type == 'ai' %}#ffc107{% else %}#17a2b8{% endif %};">
+                            <a href="{% url 'product_detail' product.sku_code %}" style="text-decoration: none; color: inherit;">
+                                <img src="{% static 'images/basicItem.jpg' %}" class="card-img-top" alt="{{ product.product_name }}" style="height: 200px; object-fit: cover;">
+                                <div class="card-body">
+                                    <div class="badge {% if recommendations_type == 'ai' %}bg-warning text-dark{% else %}bg-info text-white{% endif %} mb-2">
+                                        {% if recommendations_type == 'ai' %}
+                                            <i class="bi bi-lightning-fill"></i> AI Pick
+                                        {% else %}
+                                            <i class="bi bi-lightbulb-fill"></i> Related
+                                        {% endif %}
+                                    </div>
+                                    <h6 class="card-title">{{ product.product_name|truncatewords:5 }}</h6>
+                                    <p class="card-text text-muted small">{{ product.product_category }}</p>
+                                    <p class="fw-bold text-success">${{ product.unit_price }}</p>
+                                    <p class="small text-muted">
+                                        <i class="bi bi-star-fill text-warning"></i> {{ product.product_rating }}/5
+                                    </p>
+                                </div>
+                            </a>
+                            <div class="card-footer bg-transparent border-0 p-3">
+                                <form method="post" action="{% url 'add_to_cart' product.sku_code %}" class="d-grid">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="quantity" value="1">
+                                    <input type="hidden" name="from_cart" value="true">
+                                    <button type="submit" class="btn btn-outline-{% if recommendations_type == 'ai' %}warning{% else %}info{% endif %} btn-sm">
+                                        <i class="bi bi-cart-plus"></i> Add to Cart
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
         {% else %}
             <div class="empty-cart">
                 <i class="bi bi-cart-x"></i>
@@ -322,94 +462,12 @@
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
+    <!-- Bootstrap CSS handles dropdown menus without JavaScript -->
+    <style>
+        /* Pure CSS dropdown for navbar */
+        .navbar-nav .dropdown:hover .dropdown-menu {
+            display: block;
         }
-
-        function updateQuantity(itemId, newQuantity) {
-            newQuantity = parseInt(newQuantity);
-            if (newQuantity < 1) return;
-
-            const csrftoken = getCookie('csrftoken');
-            fetch(`/cart/update/${itemId}/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': csrftoken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: `quantity=${newQuantity}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById(`quantity-${itemId}`).value = newQuantity;
-                    document.getElementById(`item-total-${itemId}`).textContent = `$${data.item_total.toFixed(2)}`;
-                    document.getElementById('cart-subtotal').textContent = `$${data.subtotal.toFixed(2)}`;
-                    document.getElementById('cart-total').textContent = `$${data.subtotal.toFixed(2)}`;
-                    
-                    // Update cart count in navbar
-                    const cartLinks = document.querySelectorAll('.nav-link');
-                    cartLinks.forEach(link => {
-                        if (link.textContent.includes('Cart')) {
-                            link.innerHTML = `<i class="bi bi-cart"></i> Cart (${data.cart_total})`;
-                        }
-                    });
-                }
-            })
-            .catch(error => console.error('Error:', error));
-        }
-
-        function removeItem(event, itemId) {
-            event.preventDefault();
-            if (!confirm('Remove this item from cart?')) return false;
-
-            const csrftoken = getCookie('csrftoken');
-            fetch(event.target.action, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrftoken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById(`cart-item-${itemId}`).remove();
-                    document.getElementById('cart-subtotal').textContent = `$${data.subtotal.toFixed(2)}`;
-                    document.getElementById('cart-total').textContent = `$${data.subtotal.toFixed(2)}`;
-                    
-                    // Update cart count in navbar
-                    const cartLinks = document.querySelectorAll('.nav-link');
-                    cartLinks.forEach(link => {
-                        if (link.textContent.includes('Cart')) {
-                            link.innerHTML = `<i class="bi bi-cart"></i> Cart (${data.cart_total})`;
-                        }
-                    });
-
-                    // If cart is empty, reload page to show empty cart message
-                    if (data.cart_total === 0) {
-                        location.reload();
-                    }
-                }
-            })
-            .catch(error => console.error('Error:', error));
-
-            return false;
-        }
-    </script>
+    </style>
 </body>
 </html>
