@@ -1,0 +1,100 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}{{ page_title }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="modern-card p-4">
+                <h2 class="gradient-text mb-4">
+                    <i class="bi {% if product %}bi-pencil{% else %}bi-plus-circle{% endif %}"></i> 
+                    {{ page_title }}
+                </h2>
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.sku_code.id_for_label }}" class="form-label">
+                                {{ form.sku_code.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.sku_code }}
+                            {% if form.sku_code.help_text %}
+                                <small class="form-text text-muted">{{ form.sku_code.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.product_name.id_for_label }}" class="form-label">
+                                {{ form.product_name.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.product_name }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.product_description.id_for_label }}" class="form-label">
+                            {{ form.product_description.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.product_description }}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.product_category.id_for_label }}" class="form-label">
+                                {{ form.product_category.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.product_category }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.unit_price.id_for_label }}" class="form-label">
+                                {{ form.unit_price.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.unit_price }}
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.product_rating.id_for_label }}" class="form-label">
+                                {{ form.product_rating.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.product_rating }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.quantity_on_hand.id_for_label }}" class="form-label">
+                                {{ form.quantity_on_hand.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.quantity_on_hand }}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.reorder_quantity.id_for_label }}" class="form-label">
+                                {{ form.reorder_quantity.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.reorder_quantity }}
+                            <small class="form-text text-muted">Alert when stock falls below this level</small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'admin_product_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-gradient">
+                            <i class="bi {% if product %}bi-check-circle{% else %}bi-plus-circle{% endif %}"></i> 
+                            {{ submit_text }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}Delete Staff User - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="modern-card">
+                <h2 class="gradient-text mb-4">Delete Staff User</h2>
+                
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> You are about to delete the following staff user:
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ staff_user.username }}</h5>
+                        <p class="card-text mb-1"><strong>Email:</strong> {{ staff_user.email }}</p>
+                        <p class="card-text mb-1"><strong>Name:</strong> {{ staff_user.get_full_name|default:"N/A" }}</p>
+                        <p class="card-text mb-1">
+                            <strong>Status:</strong>
+                            {% if staff_user.is_superuser %}
+                                <span class="badge bg-danger">Superuser</span>
+                            {% elif staff_user.is_staff %}
+                                <span class="badge bg-primary">Staff</span>
+                            {% endif %}
+                        </p>
+                        <p class="card-text mb-0">
+                            <strong>Last Login:</strong> 
+                            {% if staff_user.last_login %}
+                                {{ staff_user.last_login|date:"Y-m-d H:i" }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <p class="text-danger">
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        This action cannot be undone. All data associated with this user will be permanently deleted.
+                    </p>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <a href="{% url 'admin_staff_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i> Delete User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

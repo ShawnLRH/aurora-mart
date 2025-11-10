@@ -1,0 +1,116 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}Staff Management - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="modern-card">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="gradient-text mb-0">Staff Management</h2>
+            <a href="{% url 'admin_staff_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Add Staff User
+            </a>
+        </div>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Last Login</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for staff in page_obj %}
+                            <tr>
+                                <td>{{ staff.username }}</td>
+                                <td>{{ staff.email }}</td>
+                                <td>{{ staff.get_full_name|default:"-" }}</td>
+                                <td>
+                                    {% if staff.is_superuser %}
+                                        <span class="badge bg-danger">Superuser</span>
+                                    {% elif staff.is_staff %}
+                                        <span class="badge bg-primary">Staff</span>
+                                    {% endif %}
+                                    {% if not staff.is_active %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if staff.last_login %}
+                                        {{ staff.last_login|date:"Y-m-d H:i" }}
+                                    {% else %}
+                                        <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'admin_staff_delete' staff.id %}" 
+                                       class="btn btn-sm btn-outline-danger"
+                                       onclick="return confirm('Are you sure you want to delete {{ staff.username }}?');">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if page_obj.has_other_pages %}
+                <nav aria-label="Staff pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1">First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No staff users found. Click "Add Staff User" to create one.
+            </div>
+        {% endif %}
+        
+        <div class="mt-4">
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

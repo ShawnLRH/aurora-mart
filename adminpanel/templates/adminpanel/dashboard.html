@@ -1,0 +1,135 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}Admin Dashboard - Aurora-Mart{% endblock %}
+
+{% block nav_home %}active{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="gradient-text"><i class="bi bi-speedometer2"></i> Admin Dashboard</h1>
+            <p class="text-muted">Manage products and inventory</p>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="modern-card p-4">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-box-seam" style="font-size: 2.5rem; color: #667eea;"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0">Total Products</h5>
+                        <h2 class="mb-0 gradient-text">{{ total_products }}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="modern-card p-4">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2.5rem; color: #ffc107;"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0">Low Stock Items</h5>
+                        <h2 class="mb-0" style="color: #ffc107;">{{ low_stock_count }}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="modern-card p-4">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-x-circle" style="font-size: 2.5rem; color: #dc3545;"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0">Out of Stock</h5>
+                        <h2 class="mb-0" style="color: #dc3545;">{{ out_of_stock_count }}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="modern-card p-4">
+                <h4 class="mb-4"><i class="bi bi-list-ul"></i> Product Management</h4>
+                <div class="d-grid gap-3">
+                    <a href="{% url 'admin_product_list' %}" class="btn btn-outline-primary btn-lg">
+                        <i class="bi bi-grid"></i> View All Products
+                    </a>
+                    <a href="{% url 'admin_product_create' %}" class="btn btn-gradient btn-lg">
+                        <i class="bi bi-plus-circle"></i> Create New Product
+                    </a>
+                    <a href="{% url 'admin_product_import' %}" class="btn btn-outline-success btn-lg">
+                        <i class="bi bi-upload"></i> Import Products (CSV)
+                    </a>
+                    <a href="{% url 'admin_product_export' %}" class="btn btn-outline-info btn-lg">
+                        <i class="bi bi-download"></i> Export Products (CSV)
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="modern-card p-4 h-100">
+                <h4 class="mb-4"><i class="bi bi-tools"></i> Advanced Tools</h4>
+                <div class="d-grid gap-3">
+                    <a href="{% url 'admin_bulk_price_update' %}" class="btn btn-outline-success btn-lg">
+                        <i class="bi bi-currency-dollar"></i> Bulk Price Update
+                    </a>
+                    <a href="{% url 'admin_staff_list' %}" class="btn btn-outline-info btn-lg">
+                        <i class="bi bi-person-badge"></i> Staff Management
+                    </a>
+                    <a href="{% url 'admin_system_logs' %}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-journal-text"></i> System Logs
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-md-6">
+            <div class="modern-card p-4 h-100">
+                <h4 class="mb-4"><i class="bi bi-bell"></i> Inventory Alerts</h4>
+                <div class="d-grid gap-3">
+                    <a href="{% url 'admin_low_stock_alerts' %}" class="btn btn-outline-warning btn-lg">
+                        <i class="bi bi-exclamation-triangle"></i> View Low Stock Alerts
+                        {% if low_stock_count > 0 %}
+                            <span class="badge bg-warning text-dark">{{ low_stock_count }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'admin_product_list' %}?stock=out" class="btn btn-outline-danger btn-lg">
+                        <i class="bi bi-x-circle"></i> View Out of Stock Items
+                        {% if out_of_stock_count > 0 %}
+                            <span class="badge bg-danger">{{ out_of_stock_count }}</span>
+                        {% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="modern-card p-4 h-100">
+                <h4 class="mb-4"><i class="bi bi-people"></i> Customer Management</h4>
+                <div class="d-grid gap-3">
+                    <a href="{% url 'admin_customer_list' %}" class="btn btn-outline-primary btn-lg">
+                        <i class="bi bi-people-fill"></i> View All Customers
+                    </a>
+                    <a href="{% url 'admin_support_tickets' %}" class="btn btn-outline-primary btn-lg">
+                        <i class="bi bi-headset"></i> Support Tickets
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

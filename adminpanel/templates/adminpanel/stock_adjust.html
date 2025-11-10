@@ -1,0 +1,63 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}Adjust Stock - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="modern-card p-4">
+                <h2 class="gradient-text mb-4">
+                    <i class="bi bi-box-seam"></i> Adjust Inventory Stock
+                </h2>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.product_name }}</h5>
+                        <p class="mb-2"><strong>SKU:</strong> <code>{{ product.sku_code }}</code></p>
+                        <p class="mb-2"><strong>Category:</strong> {{ product.product_category }}</p>
+                        <p class="mb-2">
+                            <strong>Current Stock:</strong> 
+                            <span class="badge {% if product.quantity_on_hand == 0 %}bg-danger{% elif product.quantity_on_hand <= product.reorder_quantity %}bg-warning text-dark{% else %}bg-success{% endif %} fs-6">
+                                {{ product.quantity_on_hand }} units
+                            </span>
+                        </p>
+                        <p class="mb-0">
+                            <strong>Reorder Threshold:</strong> 
+                            <span class="badge bg-secondary">{{ product.reorder_quantity }} units</span>
+                        </p>
+                    </div>
+                </div>
+
+                {% if product.quantity_on_hand <= product.reorder_quantity %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        <strong>Low Stock Alert:</strong> Current stock is at or below the reorder threshold.
+                    </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label for="{{ form.quantity_on_hand.id_for_label }}" class="form-label">
+                            {{ form.quantity_on_hand.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.quantity_on_hand }}
+                        <small class="form-text text-muted">Enter the new stock quantity</small>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'admin_product_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-gradient">
+                            <i class="bi bi-check-circle"></i> Update Stock
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

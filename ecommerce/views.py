@@ -737,3 +737,37 @@ def profile(request):
         'customer': customer,
     }
     return render(request, 'ecommerce/profile.html', context)
+
+
+def contact_support(request):
+    from .forms import SupportTicketForm
+    from .models import SupportTicket
+    
+    if request.method == 'POST':
+        form = SupportTicketForm(request.POST)
+        if form.is_valid():
+            ticket = SupportTicket.objects.create(
+                user=request.user if request.user.is_authenticated else None,
+                name=form.cleaned_data['name'],
+                email=form.cleaned_data['email'],
+                subject=form.cleaned_data['subject'],
+                message=form.cleaned_data['message'],
+                status='OPEN'
+            )
+            messages.success(request, f'Your support ticket #{ticket.id} has been submitted successfully! We will respond to your email shortly.')
+            return redirect('contact_support')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, error)
+    else:
+        initial_data = {}
+        if request.user.is_authenticated:
+            initial_data['name'] = request.user.get_full_name() or request.user.username
+            initial_data['email'] = request.user.email
+        form = SupportTicketForm(initial=initial_data)
+    
+    context = {
+        'form': form,
+    }
+    return render(request, 'ecommerce/contact_support.html', context)

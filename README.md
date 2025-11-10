@@ -12,7 +12,7 @@ Student Number: A0269931R
 Student Email: adrianlim@u.nus.edu
 Student Contact: +65 97583546
 
-YouTube Demo: Coming Soon (Test Push)
+YouTube Demo: Coming Soon 
 
 A complete B2C e-commerce web application using Python and Django conforming to best practices.
 
@@ -32,6 +32,16 @@ A complete B2C e-commerce web application using Python and Django conforming to 
 - **Smart Cart Suggestions**: "Complete the Set" recommendations based on cart contents
 - **Personalized Home Page**: Featured products tailored to user's predicted preferences
 - **Data-Driven**: Trained on 50,000 real transaction records
+
+### Admin Panel 🔧
+- **Product Management**: Create, edit, delete products with SKU validation
+- **Inventory Control**: Stock adjustment, low stock alerts, out-of-stock tracking
+- **CSV Operations**: Bulk import/export products with error handling
+- **Customer Management**: View and edit customer profiles with AI category prediction
+- **Support Tickets**: Customer support system with email responses
+- **Bulk Operations**: Bulk price updates by category
+- **Staff Management**: Create and manage admin users
+- **System Logs**: Complete audit trail of all admin actions with IP tracking
 
 ## Setup Instructions
 
@@ -74,7 +84,20 @@ pip install django scikit-learn pandas mlxtend joblib
 python3 manage.py migrate
 ```
 
-5. **Load sample data** (100 customers, 500 products)
+5. **Create a superuser account** (for admin panel access)
+```bash
+python3 manage.py createsuperuser
+```
+Follow the prompts to set:
+- Username: Enter `admin` (or press Enter to use your system username)
+- Email address: Any valid email (e.g., admin@auroramart.com)
+- Password: At least 8 characters with letters and numbers (ignore "too common" warning if testing locally)
+
+After that, head to http://127.0.0.1:8000/adminpanel/ to access the dashboard for the admin panel.
+
+**Note**: Admin panel credentials are separate from customer accounts. Only superusers can access http://127.0.0.1:8000/adminpanel/
+
+6. **Load sample data** (100 customers, 500 products)
 ```bash
 # Option 1: Using the web interface (recommended)
 # Start the server first, then visit: http://127.0.0.1:8000/loaddata/
@@ -88,19 +111,19 @@ python3 manage.py shell
 >>> exit()
 ```
 
-6. **Unzip model.zip into a model folder**
+7. **Unzip model.zip into a model folder**
 
-7. **Run the development server**
+8. **Run the development server**
 ```bash
 python3 manage.py runserver
 ```
 
-8. **Access the application**
+9. **Access the application**
 
 Open your browser and navigate to:
 - **Main site**: http://127.0.0.1:8000
 - **Load data**: http://127.0.0.1:8000/loaddata/ (import CSV data)
-- **Admin interface**: http://127.0.0.1:8000/admin (requires superuser)
+- **Admin Panel**: http://127.0.0.1:8000/adminpanel/ (use superuser credentials)
 
 ## Data Management
 
@@ -131,14 +154,21 @@ aurora-mart/
 │   ├── urls.py                 # Main URL routing
 │   └── wsgi.py                 # WSGI configuration
 ├── ecommerce/                  # Main application
-│   ├── models.py               # Database models (Customer, Product, Cart)
+│   ├── models.py               # Database models (Customer, Product, Cart, SupportTicket)
 │   ├── views.py                # View functions with AI integration
 │   ├── urls.py                 # App URL routing
-│   ├── forms.py                # Form definitions (enhanced signup)
-│   ├── ai_utils.py             # AI model utilities (NEW)
+│   ├── forms.py                # Form definitions (signup, contact support)
+│   ├── ai_utils.py             # AI model utilities
 │   ├── context_processors.py  # Global template context
 │   ├── templates/              # HTML templates
 │   └── migrations/             # Database migrations
+├── adminpanel/                 # Custom admin panel
+│   ├── models.py               # SystemLog model
+│   ├── views.py                # Admin views (products, customers, support, etc.)
+│   ├── forms.py                # Admin forms
+│   ├── urls.py                 # Admin URL routing
+│   ├── templates/              # Admin panel templates
+│   └── migrations/             # Admin panel migrations
 ├── model/                      # AI models (NEW)
 │   ├── b2c_customers_100.joblib              # Decision Tree model
 │   ├── b2c_products_500_transactions_50k.joblib  # Association Rules
@@ -173,6 +203,14 @@ aurora-mart/
 ### Cart Models
 - **Cart**: One-to-one with User, tracks total items and subtotal
 - **CartItem**: Links products to carts with quantity, enforces unique constraints
+
+### Support Ticket Model
+- **SupportTicket**: Customer support requests with admin responses
+- Status tracking (Open/Resolved)
+- Email notifications and response history
+
+### Admin Models
+- **SystemLog**: Audit trail for all admin actions (CREATE, UPDATE, DELETE, IMPORT, EXPORT, BULK_UPDATE)
 
 ### AI Models
 - **Decision Tree**: Trained on 100 customer profiles, predicts 1 of 10+ product categories

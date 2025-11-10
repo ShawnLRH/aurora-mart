@@ -1,4 +1,4 @@
-from .models import Cart
+from .models import Cart, Product
 
 
 def cart_context(request):
@@ -16,11 +16,13 @@ def cart_context(request):
             cart = None
             cart_count = 0
         except Exception:
-            # Handle any other unexpected errors gracefully
             cart = None
             cart_count = 0
+    
+    all_categories = Product.objects.values_list('product_category', flat=True).distinct().order_by('product_category')
     
     return {
         'cart': cart,
         'cart_count': cart_count,
+        'all_categories': all_categories,
     }

@@ -1,0 +1,108 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}Edit Customer - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="modern-card p-4">
+                <h2 class="gradient-text mb-4">
+                    <i class="bi bi-pencil"></i> Edit Customer
+                </h2>
+
+                <div class="alert alert-info mb-4">
+                    <strong>Email:</strong> {{ customer.user.email }}<br>
+                    <strong>Current Preferred Category:</strong> 
+                    {% if customer.preferred_category %}
+                        <span class="badge bg-primary">{{ customer.preferred_category }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Not set</span>
+                    {% endif %}
+                    <br>
+                    <small class="text-muted">Preferred category will be auto-updated based on demographics using AI.</small>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.age.id_for_label }}" class="form-label">
+                                {{ form.age.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.age }}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.gender.id_for_label }}" class="form-label">
+                                {{ form.gender.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.gender }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.employment_status.id_for_label }}" class="form-label">
+                                {{ form.employment_status.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.employment_status }}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.occupation.id_for_label }}" class="form-label">
+                                {{ form.occupation.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.occupation }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.education.id_for_label }}" class="form-label">
+                                {{ form.education.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.education }}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.household_size.id_for_label }}" class="form-label">
+                                {{ form.household_size.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.household_size }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.monthly_income_sgd.id_for_label }}" class="form-label">
+                                {{ form.monthly_income_sgd.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.monthly_income_sgd }}
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check mt-4">
+                                {{ form.has_children }}
+                                <label class="form-check-label" for="{{ form.has_children.id_for_label }}">
+                                    {{ form.has_children.label }}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'admin_customer_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-gradient">
+                            <i class="bi bi-check-circle"></i> Update Customer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

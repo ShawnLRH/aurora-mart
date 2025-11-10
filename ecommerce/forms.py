@@ -268,3 +268,59 @@ class SignUpForm(UserCreationForm):
                 preferred_category=''  # Will be predicted later by AI
             )
         return user
+
+
+class SupportTicketForm(forms.Form):
+    name = forms.CharField(
+        max_length=200,
+        required=True,
+        label="Your Name",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter your full name'})
+    )
+    
+    email = forms.EmailField(
+        required=True,
+        label="Email Address",
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'your.email@example.com'})
+    )
+    
+    subject = forms.CharField(
+        max_length=200,
+        required=True,
+        label="Subject",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Brief description of your issue'})
+    )
+    
+    message = forms.CharField(
+        required=True,
+        label="Message",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Please describe your issue in detail...',
+            'rows': 6
+        })
+    )
+    
+    def clean_name(self):
+        name = self.cleaned_data.get('name', '').strip()
+        if not name:
+            raise ValidationError("Name is required.")
+        if len(name) < 2:
+            raise ValidationError("Name must be at least 2 characters long.")
+        return name
+    
+    def clean_subject(self):
+        subject = self.cleaned_data.get('subject', '').strip()
+        if not subject:
+            raise ValidationError("Subject is required.")
+        if len(subject) < 5:
+            raise ValidationError("Subject must be at least 5 characters long.")
+        return subject
+    
+    def clean_message(self):
+        message = self.cleaned_data.get('message', '').strip()
+        if not message:
+            raise ValidationError("Message is required.")
+        if len(message) < 20:
+            raise ValidationError("Please provide more details. Message must be at least 20 characters long.")
+        return message
