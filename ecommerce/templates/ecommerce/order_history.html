@@ -1,0 +1,149 @@
+{% extends 'ecommerce/base.html' %}
+{% load static %}
+
+{% block title %}Order History - Aurora Mart{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <h2 class="mb-4">Order History</h2>
+    
+    {% if page_obj %}
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Date</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in page_obj %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'order_detail' order.order_id %}" class="text-decoration-none fw-bold">
+                                    {{ order.order_id }}
+                                </a>
+                            </td>
+                            <td>{{ order.created_at|date:"M d, Y" }}</td>
+                            <td>{{ order.item_count }} item{{ order.item_count|pluralize }}</td>
+                            <td class="fw-bold">${{ order.total_amount|floatformat:2 }}</td>
+                            <td>
+                                <span class="badge bg-{{ order.get_status_display_color }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'order_detail' order.order_id %}" class="btn btn-sm btn-outline-primary me-1" title="View Details">
+                                    👁️
+                                </a>
+                                <a href="{% url 'reorder' order.order_id %}" class="btn btn-sm btn-outline-success" title="Re-order">
+                                    🔄
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Order pagination" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">&laquo;</span>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">&raquo;</span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    
+    {% else %}
+    <div class="text-center py-5">
+        <div class="mb-4">
+            <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="40" stroke="#dee2e6" stroke-width="4"/>
+                <path d="M30 50h40M50 30v40" stroke="#dee2e6" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <h4 class="mb-3">No Orders Yet</h4>
+        <p class="text-muted mb-4">You haven't placed any orders. Start shopping to see your order history here.</p>
+        <a href="{% url 'home' %}" class="btn btn-primary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+            Start Shopping
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .card {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .table thead th {
+        border: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.875rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .table tbody tr:hover {
+        background-color: rgba(102, 126, 234, 0.05);
+    }
+    
+    .page-item.active .page-link {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    
+    .page-link {
+        color: #667eea;
+    }
+    
+    .page-link:hover {
+        color: #764ba2;
+        background-color: rgba(102, 126, 234, 0.1);
+    }
+</style>
+{% endblock %}

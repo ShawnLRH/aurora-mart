@@ -96,51 +96,93 @@ def product_detail(request, sku):
     return render(request, 'ecommerce/product.html', context)
 
 def signup(request):
+    """Step 1: Collect user data and send verification email"""
     if request.method == 'POST':
         form = SignUpForm(request.POST)
         if form.is_valid():
             try:
-                user = form.save()
+                # Store form data temporarily
+                from .models import EmailVerification
+                from django.core.mail import send_mail
+                from django.conf import settings
+                import json
                 
-                # Use AI to predict preferred category based on demographic data
-                try:
-                    customer = user.customer
-                    predictor = get_category_predictor()
-                    
-                    # Prepare data for prediction
-                    customer_data = {
-                        'age': customer.age,
-                        'household_size': customer.household_size,
-                        'has_children': 1 if customer.has_children else 0,
-                        'monthly_income_sgd': float(customer.monthly_income_sgd),
-                        'gender': customer.gender,
-                        'employment_status': customer.employment_status,
-                        'occupation': customer.occupation,
-                        'education': customer.education
+                email = form.cleaned_data['email']
+                
+                # Check if there's a recent verification pending for this email
+                existing_verification = EmailVerification.objects.filter(
+                    email=email,
+                    is_verified=False
+                ).order_by('-created_at').first()
+                
+                # If exists and not expired, resend the same code
+                if existing_verification and not existing_verification.is_expired():
+                    verification = existing_verification
+                    messages.info(request, 'A verification code has already been sent to your email. Please check your inbox.')
+                else:
+                    # Create new verification record
+                    user_data = {
+                        'full_name': form.cleaned_data['full_name'],
+                        'email': form.cleaned_data['email'],
+                        'password': form.cleaned_data['password1'],
+                        'age': form.cleaned_data['age'],
+                        'gender': form.cleaned_data['gender'],
+                        'employment_status': form.cleaned_data['employment_status'],
+                        'occupation': form.cleaned_data['occupation'],
+                        'education': form.cleaned_data['education'],
+                        'household_size': form.cleaned_data['household_size'],
+                        'has_children': form.cleaned_data['has_children'],
+                        'monthly_income_sgd': str(form.cleaned_data['monthly_income_sgd']),
                     }
                     
-                    # Predict and update customer's preferred category
-                    predicted_category = predictor.predict_category(customer_data)
-                    customer.preferred_category = predicted_category
-                    customer.save()
+                    verification = EmailVerification.objects.create(
+                        email=email,
+                        user_data=user_data
+                    )
                     
-                    print(f"✅ AI Prediction for {user.email}: {predicted_category}")
+                    # Send verification email
+                    try:
+                        subject = 'Aurora-Mart Email Verification Code'
+                        message = f'''
+Hello {user_data['full_name']},
+
+Welcome to Aurora-Mart! 
+
+Your verification code is: {verification.verification_code}
+
+This code will expire in 15 minutes.
+
+If you didn't request this, please ignore this email.
+
+Best regards,
+Aurora-Mart Team
+'''
+                        send_mail(
+                            subject,
+                            message,
+                            settings.DEFAULT_FROM_EMAIL,
+                            [email],
+                            fail_silently=False,
+                        )
+                        
+                        print(f"📧 Verification email sent to {email}")
+                        print(f"🔑 Verification code: {verification.verification_code}")
+                        
+                    except Exception as e:
+                        print(f"❌ Email sending failed: {str(e)}")
+                        # For development, still proceed
+                        pass
                     
                     messages.success(
-                        request, 
-                        f'Account created successfully! We\'ve personalized your experience with {predicted_category} recommendations. Please login with your new credentials.'
+                        request,
+                        f'A 6-digit verification code has been sent to {email}. Please check your inbox and enter the code to complete signup.'
                     )
-                except Exception as e:
-                    # If AI prediction fails, still allow signup but log the error
-                    messages.success(request, f'Account created successfully! Please login with your new credentials.')
-                    import traceback
-                    print(f"❌ AI prediction error: {str(e)}")
-                    print(traceback.format_exc())
                 
-                # Redirect to login page instead of auto-login
-                return redirect('login')
+                # Redirect to verification page
+                return redirect('verify_email', verification_id=verification.id)
+                
             except Exception as e:
-                messages.error(request, f'An error occurred while creating your account. Please try again.')
+                messages.error(request, f'An error occurred while processing your signup. Please try again.')
                 print(f"❌ Signup error: {str(e)}")
                 import traceback
                 print(traceback.format_exc())
@@ -156,6 +198,196 @@ def signup(request):
     else:
         form = SignUpForm()
     return render(request, 'ecommerce/signup.html', {'form': form})
+
+
+def verify_email(request, verification_id):
+    """Step 2: Verify email with 6-digit code"""
+    from .models import EmailVerification
+    from django.utils import timezone
+    
+    try:
+        verification = EmailVerification.objects.get(id=verification_id)
+    except EmailVerification.DoesNotExist:
+        messages.error(request, 'Invalid verification link.')
+        return redirect('signup')
+    
+    # Check if already verified
+    if verification.is_verified:
+        messages.info(request, 'This email has already been verified. Please login.')
+        return redirect('login')
+    
+    if request.method == 'POST':
+        entered_code = request.POST.get('verification_code', '').strip()
+        
+        # Check max attempts
+        if verification.attempts >= 5:
+            messages.error(request, 'Too many failed attempts. Please sign up again.')
+            verification.delete()
+            return redirect('signup')
+        
+        verification.attempts += 1
+        verification.save()
+        
+        if entered_code == verification.verification_code:
+            # Code is correct - create the user account
+            try:
+                from django.contrib.auth.models import User
+                from .models import Customer
+                import json
+                
+                user_data = verification.user_data
+                
+                # Create user
+                full_name_parts = user_data['full_name'].split()
+                first_name = full_name_parts[0]
+                last_name = ' '.join(full_name_parts[1:]) if len(full_name_parts) > 1 else ''
+                
+                user = User.objects.create_user(
+                    username=user_data['email'],
+                    email=user_data['email'],
+                    password=user_data['password'],
+                    first_name=first_name,
+                    last_name=last_name
+                )
+                
+                # Create customer profile
+                customer = Customer.objects.create(
+                    user=user,
+                    age=user_data['age'],
+                    gender=user_data['gender'],
+                    employment_status=user_data['employment_status'],
+                    occupation=user_data['occupation'],
+                    education=user_data['education'],
+                    household_size=user_data['household_size'],
+                    has_children=user_data['has_children'],
+                    monthly_income_sgd=user_data['monthly_income_sgd'],
+                    preferred_category=''
+                )
+                
+                # Use AI to predict preferred category
+                try:
+                    predictor = get_category_predictor()
+                    customer_data = {
+                        'age': customer.age,
+                        'household_size': customer.household_size,
+                        'has_children': 1 if customer.has_children else 0,
+                        'monthly_income_sgd': float(customer.monthly_income_sgd),
+                        'gender': customer.gender,
+                        'employment_status': customer.employment_status,
+                        'occupation': customer.occupation,
+                        'education': customer.education
+                    }
+                    predicted_category = predictor.predict_category(customer_data)
+                    customer.preferred_category = predicted_category
+                    customer.save()
+                    
+                    print(f"✅ AI Prediction for {user.email}: {predicted_category}")
+                    
+                    messages.success(
+                        request,
+                        f'Account created successfully! We\'ve personalized your experience with {predicted_category} recommendations. Please login with your new credentials.'
+                    )
+                except Exception as e:
+                    messages.success(request, 'Account created successfully! Please login with your new credentials.')
+                    print(f"❌ AI prediction error: {str(e)}")
+                
+                # Mark verification as complete
+                verification.is_verified = True
+                verification.save()
+                
+                # Redirect to login
+                return redirect('login')
+                
+            except Exception as e:
+                messages.error(request, f'An error occurred while creating your account. Please try again.')
+                print(f"❌ Account creation error: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+        else:
+            remaining_attempts = 5 - verification.attempts
+            if remaining_attempts > 0:
+                messages.error(request, f'Invalid verification code. You have {remaining_attempts} attempt(s) remaining.')
+            else:
+                messages.error(request, 'Too many failed attempts. Please sign up again.')
+                verification.delete()
+                return redirect('signup')
+    
+    # Calculate time remaining
+    now = timezone.now()
+    time_remaining = (verification.expires_at - now).total_seconds()
+    is_expired = time_remaining <= 0
+    
+    context = {
+        'verification': verification,
+        'email': verification.email,
+        'expires_at': verification.expires_at.isoformat(),  # ISO format for JavaScript
+        'is_expired': is_expired,
+        'time_remaining_seconds': max(0, int(time_remaining)),
+    }
+    return render(request, 'ecommerce/verify_email.html', context)
+
+
+def resend_verification_code(request, verification_id):
+    """Resend verification code with new 6-digit code"""
+    from .models import EmailVerification
+    from django.core.mail import send_mail
+    from django.conf import settings
+    from django.utils import timezone
+    from datetime import timedelta
+    import random
+    
+    try:
+        verification = EmailVerification.objects.get(id=verification_id)
+    except EmailVerification.DoesNotExist:
+        messages.error(request, 'Invalid verification link.')
+        return redirect('signup')
+    
+    # Check if already verified
+    if verification.is_verified:
+        messages.info(request, 'This email has already been verified. Please login.')
+        return redirect('login')
+    
+    # Generate new code and reset expiration
+    verification.verification_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    verification.expires_at = timezone.now() + timedelta(minutes=15)
+    verification.attempts = 0  # Reset attempts
+    verification.save()
+    
+    # Send new verification email
+    try:
+        user_data = verification.user_data
+        subject = 'Aurora-Mart Email Verification Code (Resent)'
+        message = f'''
+Hello {user_data['full_name']},
+
+Here is your NEW verification code: {verification.verification_code}
+
+This code will expire in 15 minutes.
+
+If you didn't request this, please ignore this email.
+
+Best regards,
+Aurora-Mart Team
+'''
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [verification.email],
+            fail_silently=False,
+        )
+        
+        print(f"📧 NEW verification email sent to {verification.email}")
+        print(f"🔑 NEW verification code: {verification.verification_code}")
+        
+        messages.success(request, 'A new verification code has been sent to your email!')
+        
+    except Exception as e:
+        print(f"❌ Email sending failed: {str(e)}")
+        messages.warning(request, 'New code generated but email sending failed. Check console for the code.')
+    
+    return redirect('verify_email', verification_id=verification_id)
+
 
 def load_data(request):
     """
@@ -771,3 +1003,387 @@ def contact_support(request):
         'form': form,
     }
     return render(request, 'ecommerce/contact_support.html', context)
+
+
+@login_required
+def checkout(request):
+    from .models import Cart, Address
+    
+    try:
+        cart = Cart.objects.get(user=request.user)
+    except Cart.DoesNotExist:
+        messages.error(request, 'Your cart is empty.')
+        return redirect('cart_view')
+    
+    if cart.total_items == 0:
+        messages.error(request, 'Your cart is empty.')
+        return redirect('cart_view')
+    
+    # Get user's saved addresses
+    addresses = Address.objects.filter(user=request.user)
+    default_address = addresses.filter(is_default=True).first()
+    
+    # Calculate order totals
+    from decimal import Decimal
+    subtotal = cart.subtotal
+    shipping_fee = Decimal('5.00') if subtotal < 50 else Decimal('0.00')  # Free shipping over $50
+    tax = (subtotal * Decimal('0.09')).quantize(Decimal('0.01'))  # 9% tax
+    total = subtotal + shipping_fee + tax
+    
+    context = {
+        'cart': cart,
+        'addresses': addresses,
+        'default_address': default_address,
+        'subtotal': subtotal,
+        'shipping_fee': shipping_fee,
+        'tax': tax,
+        'total': total,
+    }
+    return render(request, 'ecommerce/checkout.html', context)
+
+
+@login_required
+def process_checkout(request):
+    from .models import Cart, Order, OrderItem, Product, Customer, Address
+    from django.utils import timezone
+    from decimal import Decimal
+    
+    if request.method != 'POST':
+        return redirect('checkout')
+    
+    try:
+        cart = Cart.objects.get(user=request.user)
+    except Cart.DoesNotExist:
+        messages.error(request, 'Your cart is empty.')
+        return redirect('cart_view')
+    
+    if cart.total_items == 0:
+        messages.error(request, 'Your cart is empty.')
+        return redirect('cart_view')
+    
+    # Get form data
+    use_saved_address = request.POST.get('use_saved_address')
+    save_address = request.POST.get('save_address') == 'on'
+    payment_method = request.POST.get('payment_method')
+    
+    # Validate payment method
+    valid_methods = ['CREDIT_CARD', 'PAYPAL', 'BANK_TRANSFER', 'CASH_ON_DELIVERY']
+    if payment_method not in valid_methods:
+        messages.error(request, 'Please select a valid payment method.')
+        return redirect('checkout')
+    
+    # Get address data
+    if use_saved_address:
+        try:
+            address = Address.objects.get(id=use_saved_address, user=request.user)
+            full_name = address.full_name
+            phone = address.phone
+            address_line1 = address.address_line1
+            address_line2 = address.address_line2
+            city = address.city
+            state = address.state
+            postal_code = address.postal_code
+            country = address.country
+        except Address.DoesNotExist:
+            messages.error(request, 'Selected address not found.')
+            return redirect('checkout')
+    else:
+        full_name = request.POST.get('full_name', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        address_line1 = request.POST.get('address_line1', '').strip()
+        address_line2 = request.POST.get('address_line2', '').strip()
+        city = request.POST.get('city', '').strip()
+        state = request.POST.get('state', '').strip()
+        postal_code = request.POST.get('postal_code', '').strip()
+        country = request.POST.get('country', 'Singapore').strip()
+        
+        # Validate address fields
+        if not all([full_name, phone, address_line1, city, state, postal_code, country]):
+            messages.error(request, 'Please fill in all required address fields.')
+            return redirect('checkout')
+        
+        # Save new address if requested
+        if save_address:
+            Address.objects.create(
+                user=request.user,
+                full_name=full_name,
+                phone=phone,
+                address_line1=address_line1,
+                address_line2=address_line2,
+                city=city,
+                state=state,
+                postal_code=postal_code,
+                country=country,
+                is_default=not Address.objects.filter(user=request.user).exists()
+            )
+    
+    # Calculate totals
+    subtotal = cart.subtotal
+    shipping_fee = Decimal('5.00') if subtotal < 50 else Decimal('0.00')
+    tax = (subtotal * Decimal('0.09')).quantize(Decimal('0.01'))
+    total = subtotal + shipping_fee + tax
+    
+    # Check stock availability
+    for item in cart.items.all():
+        if item.product.quantity_on_hand < item.quantity:
+            messages.error(request, f'Insufficient stock for {item.product.product_name}. Only {item.product.quantity_on_hand} available.')
+            return redirect('cart_view')
+    
+    # Get or create customer profile
+    try:
+        customer = Customer.objects.get(user=request.user)
+    except Customer.DoesNotExist:
+        customer = None
+    
+    # Create order
+    order = Order.objects.create(
+        user=request.user,
+        customer=customer,
+        shipping_full_name=full_name,
+        shipping_phone=phone,
+        shipping_address_line1=address_line1,
+        shipping_address_line2=address_line2,
+        shipping_city=city,
+        shipping_state=state,
+        shipping_postal_code=postal_code,
+        shipping_country=country,
+        subtotal=subtotal,
+        shipping_fee=shipping_fee,
+        tax=tax,
+        total_amount=total,
+        payment_method=payment_method,
+        status='ORDER_RECEIVED'
+    )
+    
+    # Create order items and reduce stock
+    for item in cart.items.all():
+        OrderItem.objects.create(
+            order=order,
+            product=item.product,
+            product_sku=item.product.sku_code,
+            product_name=item.product.product_name,
+            quantity=item.quantity,
+            unit_price=item.product.unit_price
+        )
+        
+        # Reduce stock
+        item.product.quantity_on_hand -= item.quantity
+        item.product.save()
+        print(f"📦 Stock reduced: {item.product.product_name} - New quantity: {item.product.quantity_on_hand}")
+    
+    # Clear cart
+    cart.items.all().delete()
+    
+    messages.success(request, f'Order {order.order_id} placed successfully!')
+    print(f"✅ Order created: {order.order_id} - Total: ${order.total_amount}")
+    
+    return redirect('order_confirmation', order_id=order.order_id)
+
+
+@login_required
+def order_confirmation(request, order_id):
+    from .models import Order, Product
+    from django.db.models import Q
+    import random
+    
+    try:
+        order = Order.objects.get(order_id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, 'Order not found.')
+        return redirect('order_history')
+    
+    # Get AI recommendations for "next purchase"
+    purchased_skus = [item.product_sku for item in order.items.all()]
+    purchased_categories = [item.product.product_category for item in order.items.all() if item.product]
+    
+    # Get products from same categories
+    recommendations = []
+    if purchased_categories:
+        recommendations = list(Product.objects.filter(
+            product_category__in=purchased_categories,
+            quantity_on_hand__gt=0
+        ).exclude(
+            sku_code__in=purchased_skus
+        ).order_by('-product_rating', '-quantity_on_hand')[:6])
+    
+    # If not enough recommendations, add random popular products
+    if len(recommendations) < 6:
+        additional = list(Product.objects.filter(
+            quantity_on_hand__gt=0
+        ).exclude(
+            sku_code__in=purchased_skus
+        ).exclude(
+            sku_code__in=[p.sku_code for p in recommendations]
+        ).order_by('-product_rating')[:6 - len(recommendations)])
+        recommendations.extend(additional)
+    
+    # Shuffle for variety
+    random.shuffle(recommendations)
+    
+    context = {
+        'order': order,
+        'recommendations': recommendations[:6],
+    }
+    return render(request, 'ecommerce/order_confirmation.html', context)
+
+
+@login_required
+def order_history(request):
+    from .models import Order
+    from django.core.paginator import Paginator
+    
+    orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(orders, 10)  # 10 orders per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+    }
+    return render(request, 'ecommerce/order_history.html', context)
+
+
+@login_required
+def order_detail(request, order_id):
+    from .models import Order
+    
+    try:
+        order = Order.objects.get(order_id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, 'Order not found.')
+        return redirect('order_history')
+    
+    # Calculate progress percentage
+    progress_map = {
+        'ORDER_RECEIVED': 33,
+        'ORDER_SENT': 66,
+        'DELIVERED': 100,
+        'CANCELLED': 0,
+    }
+    progress = progress_map.get(order.status, 0)
+    
+    context = {
+        'order': order,
+        'progress': progress,
+    }
+    return render(request, 'ecommerce/order_detail.html', context)
+
+
+@login_required
+def reorder(request, order_id):
+    from .models import Order, Cart, CartItem
+    
+    try:
+        order = Order.objects.get(order_id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, 'Order not found.')
+        return redirect('order_history')
+    
+    # Get or create cart
+    cart, created = Cart.objects.get_or_create(user=request.user)
+    
+    # Add order items to cart
+    added_count = 0
+    for item in order.items.all():
+        if item.product and item.product.quantity_on_hand > 0:
+            # Check if item already in cart
+            cart_item = cart.items.filter(product=item.product).first()
+            if cart_item:
+                # Update quantity
+                new_quantity = min(cart_item.quantity + item.quantity, item.product.quantity_on_hand)
+                cart_item.quantity = new_quantity
+                cart_item.save()
+            else:
+                # Add new item
+                CartItem.objects.create(
+                    cart=cart,
+                    product=item.product,
+                    quantity=min(item.quantity, item.product.quantity_on_hand)
+                )
+            added_count += 1
+        else:
+            messages.warning(request, f'{item.product_name} is currently out of stock.')
+    
+    if added_count > 0:
+        messages.success(request, f'{added_count} item(s) added to your cart from order {order.order_id}.')
+    else:
+        messages.error(request, 'No items could be added to cart (all out of stock).')
+    
+    return redirect('cart_view')
+
+
+@login_required
+def complete_order(request, order_id):
+    from .models import Order
+    from django.utils import timezone
+    
+    try:
+        order = Order.objects.get(order_id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, 'Order not found.')
+        return redirect('order_history')
+    
+    # Only allow completion if order is delivered
+    if order.status != 'DELIVERED':
+        messages.error(request, 'Order cannot be marked as received yet.')
+        return redirect('order_detail', order_id=order.order_id)
+    
+    # Mark order as completed
+    order.status = 'COMPLETED'
+    order.completed_at = timezone.now()
+    order.save()
+    
+    messages.success(request, 'Thank you for confirming receipt! Your order is now completed.')
+    print(f"✅ Order {order.order_id} marked as completed by customer")
+    
+    return redirect('order_detail', order_id=order.order_id)
+
+
+@login_required
+def refund_order(request, order_id):
+    from .models import Order
+    from django.utils import timezone
+    
+    try:
+        order = Order.objects.get(order_id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, 'Order not found.')
+        return redirect('order_history')
+    
+    # Only allow refund if order is delivered
+    if order.status != 'DELIVERED':
+        messages.error(request, 'Order cannot be refunded at this stage.')
+        return redirect('order_detail', order_id=order.order_id)
+    
+    if request.method == 'POST':
+        refund_reason = request.POST.get('refund_reason', '').strip()
+        
+        if not refund_reason:
+            messages.error(request, 'Please provide a reason for the refund.')
+            return redirect('refund_order', order_id=order.order_id)
+        
+        # Process refund: restore stock for all items
+        for item in order.items.all():
+            if item.product:
+                item.product.quantity_on_hand += item.quantity
+                item.product.save()
+                print(f"📦 Stock restored: {item.product.product_name} +{item.quantity} = {item.product.quantity_on_hand}")
+        
+        # Update order status
+        order.status = 'REFUNDED'
+        order.refunded_at = timezone.now()
+        order.refund_reason = refund_reason
+        order.save()
+        
+        messages.success(request, f'Your refund request for order {order.order_id} has been processed. Stock has been restored.')
+        print(f"💰 Order {order.order_id} refunded - Reason: {refund_reason[:50]}...")
+        
+        return redirect('order_detail', order_id=order.order_id)
+    
+    # GET request - show refund form
+    context = {
+        'order': order,
+    }
+    return render(request, 'ecommerce/refund_order.html', context)

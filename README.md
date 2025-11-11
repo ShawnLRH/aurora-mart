@@ -20,11 +20,14 @@ A complete B2C e-commerce web application using Python and Django conforming to 
 
 ### Core E-commerce
 - 🛍️ Product catalog with 500 SKUs across multiple categories
-- 👤 User authentication (signup, login, logout)
-- 🛒 Persistent shopping cart with AJAX updates
+- 👤 User authentication with email verification (6-digit codes)
+- 🛒 Shopping cart with real-time stock validation
 - 📦 Product detail pages with ratings and stock information
-- � SQLite database with sample data
-- 📱 Responsive Bootstrap design
+- 💳 Complete checkout process with shipping addresses
+- 📋 Order management and tracking system
+- ✅ Order completion and refund functionality
+- 🗄️ SQLite database with sample data
+- 📱 Responsive Bootstrap design (Pure CSS, no JavaScript)
 
 ### AI-Powered Personalization 🤖
 - **Decision Tree Classification**: Predicts preferred product category based on demographic data during signup
@@ -38,6 +41,7 @@ A complete B2C e-commerce web application using Python and Django conforming to 
 - **Inventory Control**: Stock adjustment, low stock alerts, out-of-stock tracking
 - **CSV Operations**: Bulk import/export products with error handling
 - **Customer Management**: View and edit customer profiles with AI category prediction
+- **Order Management**: View, search, and manage all customer orders with status updates
 - **Support Tickets**: Customer support system with email responses
 - **Bulk Operations**: Bulk price updates by category
 - **Staff Management**: Create and manage admin users
@@ -206,6 +210,15 @@ aurora-mart/
 - **Cart**: One-to-one with User, tracks total items and subtotal
 - **CartItem**: Links products to carts with quantity, enforces unique constraints
 
+### Order Models
+- **Order**: Complete order tracking with multiple statuses (Received, Sent, Delivered, Completed, Refunded, Cancelled)
+- **OrderItem**: Individual line items with SKU, name, quantity, and pricing
+- **Address**: Shipping address storage with default address support
+- Automatic stock reduction on purchase
+- Automatic stock restoration on refund
+- Order completion workflow (customer confirms delivery)
+- Refund request system with reason tracking
+
 ### Support Ticket Model
 - **SupportTicket**: Customer support requests with admin responses
 - Status tracking (Open/Resolved)
@@ -222,10 +235,13 @@ aurora-mart/
 
 ### Standard E-commerce Flow
 1. **Browse Products**: Visit the home page to see featured and popular products
-2. **View Details**: Click on any product to see detailed information and AI recommendations
-3. **Sign Up**: Create an account with demographic data for personalized experience
-4. **Add to Cart**: Add products to your persistent shopping cart
-5. **Checkout**: Review cart with "Complete the Set" AI suggestions
+2. **Search & Filter**: Search by name or SKU with keyword highlighting, filter by category
+3. **View Details**: Click on any product to see detailed information and AI recommendations
+4. **Sign Up**: Create an account with email verification (6-digit code sent to console)
+5. **Add to Cart**: Add products to your shopping cart with real-time stock validation
+6. **Checkout**: Complete purchase with shipping address and payment method selection
+7. **Track Orders**: View order status progression (Received → Sent → Delivered)
+8. **Complete Order**: After delivery, confirm receipt or request refund with automatic stock restoration
 
 ### AI Features in Action
 
@@ -270,6 +286,30 @@ Actionable insights for business strategy at `/adminpanel/ai/rules/`:
 - **Business Applications**: Use these insights for product bundling, store layout optimization, and targeted marketing campaigns
 - **High Quality Rules**: All recommendations are from 997K+ association rules with strict confidence thresholds (≥99%)
 
+### Order Management Flow
+
+#### Customer Workflow
+1. **Place Order**: Complete checkout to create order (status: ORDER_RECEIVED)
+2. **Track Progress**: View order status in "My Orders" section
+3. **Receive Delivery**: Admin updates status to DELIVERED
+4. **Confirm or Refund**: Two options appear after delivery:
+   - ✅ **Received**: Mark order as COMPLETED (confirms satisfaction)
+   - 💰 **Request Refund**: Submit refund reason, automatically restores stock and changes status to REFUNDED
+
+#### Admin Workflow
+1. **View Orders**: Access Order Management from admin panel dashboard
+2. **Search & Filter**: Find orders by Order ID, customer email, or status
+3. **Update Status**: Change order status (Received → Sent → Delivered)
+4. **Monitor Refunds**: Track refunded orders and automatic stock restoration
+
+#### Order Statuses
+- **ORDER_RECEIVED**: Initial status after checkout
+- **ORDER_SENT**: Order shipped by admin
+- **DELIVERED**: Order delivered to customer
+- **COMPLETED**: Customer confirmed receipt
+- **REFUNDED**: Customer requested refund, stock restored
+- **CANCELLED**: Order cancelled (by admin or system)
+
 See **AI_TESTING_GUIDE.md** for detailed testing instructions.
 
 ## Troubleshooting
@@ -313,9 +353,10 @@ To run in development mode with debug enabled:
 - **joblib**: Model serialization and loading
 
 ### Frontend
-- **Bootstrap 5.3.3**: Responsive UI framework
+- **Bootstrap 5.3.3**: Responsive UI framework (CSS only, no JavaScript)
 - **Bootstrap Icons**: Icon library
-- **JavaScript/AJAX**: Dynamic cart updates without page reload
+- **Pure CSS**: All interactions (dropdowns, tabs, forms) implemented without JavaScript
+- **Django Templates**: Server-side rendering with template inheritance
 
 ### Database & Data
 - **SQLite3**: Embedded database

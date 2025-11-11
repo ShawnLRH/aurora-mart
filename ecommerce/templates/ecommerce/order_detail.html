@@ -1,0 +1,254 @@
+{% extends 'ecommerce/base.html' %}
+{% load static %}
+
+{% block title %}Order {{ order.order_id }} - Aurora Mart{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Order Details</h2>
+        <a href="{% url 'order_history' %}" class="btn btn-outline-secondary">← Back to Orders</a>
+    </div>
+    
+    <div class="row">
+        <!-- Left Column: Order Progress & Details -->
+        <div class="col-lg-8 mb-4">
+            <!-- Order Tracking -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="mb-0">Order Tracking</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress-container mb-4">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ progress }}%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" 
+                                 aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-3">
+                            <div class="text-center" style="flex: 1;">
+                                <div class="tracking-icon {% if progress >= 33 %}active{% endif %}">
+                                    📦
+                                </div>
+                                <small class="d-block mt-2 fw-bold">Order Received</small>
+                                {% if order.created_at %}
+                                <small class="text-muted">{{ order.created_at|date:"M d, g:i A" }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="text-center" style="flex: 1;">
+                                <div class="tracking-icon {% if progress >= 66 %}active{% endif %}">
+                                    🚚
+                                </div>
+                                <small class="d-block mt-2 fw-bold">Order Sent</small>
+                                {% if order.order_sent_at %}
+                                <small class="text-muted">{{ order.order_sent_at|date:"M d, g:i A" }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="text-center" style="flex: 1;">
+                                <div class="tracking-icon {% if progress >= 100 %}active{% endif %}">
+                                    ✅
+                                </div>
+                                <small class="d-block mt-2 fw-bold">Delivered</small>
+                                {% if order.delivered_at %}
+                                <small class="text-muted">{{ order.delivered_at|date:"M d, g:i A" }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-{{ order.get_status_display_color }} mb-0">
+                        <strong>Current Status:</strong> {{ order.get_status_display }}
+                        {% if order.status == 'ORDER_RECEIVED' %}
+                        <br><small>Your order has been received and is being processed.</small>
+                        {% elif order.status == 'ORDER_SENT' %}
+                        <br><small>Your order is on its way! Expected delivery within 3-5 business days.</small>
+                        {% elif order.status == 'DELIVERED' %}
+                        <br><small>Your order has been delivered. Thank you for shopping with us!</small>
+                        {% elif order.status == 'CANCELLED' %}
+                        <br><small>This order has been cancelled.</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order Information -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="mb-0">Order Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Order ID:</strong></p>
+                            <p class="text-primary">{{ order.order_id }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Order Date:</strong></p>
+                            <p>{{ order.created_at|date:"F d, Y - g:i A" }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Payment Method:</strong></p>
+                            <p>{{ order.get_payment_method_display }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Total Amount:</strong></p>
+                            <p class="text-primary fw-bold">${{ order.total_amount|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Shipping Address -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="mb-0">Shipping Address</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1">{{ order.shipping_full_name }}</p>
+                    <p class="mb-1">{{ order.shipping_phone }}</p>
+                    <p class="mb-1">{{ order.shipping_address_line1 }}</p>
+                    {% if order.shipping_address_line2 %}
+                    <p class="mb-1">{{ order.shipping_address_line2 }}</p>
+                    {% endif %}
+                    <p class="mb-1">{{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_postal_code }}</p>
+                    <p class="mb-0">{{ order.shipping_country }}</p>
+                </div>
+            </div>
+            
+            <!-- Order Items -->
+            <div class="card shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="mb-0">Order Items</h5>
+                </div>
+                <div class="card-body">
+                    {% for item in order.items.all %}
+                    <div class="d-flex align-items-center mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">
+                                <a href="{% url 'product_detail' item.product_sku %}" class="text-decoration-none">
+                                    {{ item.product_name }}
+                                </a>
+                            </h6>
+                            <small class="text-muted">SKU: {{ item.product_sku }}</small><br>
+                            <small class="text-muted">Unit Price: ${{ item.unit_price|floatformat:2 }} × {{ item.quantity }}</small>
+                        </div>
+                        <div class="text-end">
+                            <strong>${{ item.total_price|floatformat:2 }}</strong>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <div class="mt-3 pt-3 border-top">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span>
+                            <span>${{ order.subtotal|floatformat:2 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Shipping:</span>
+                            <span>
+                                {% if order.shipping_fee == 0 %}
+                                <span class="text-success">FREE</span>
+                                {% else %}
+                                ${{ order.shipping_fee|floatformat:2 }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Tax:</span>
+                            <span>${{ order.tax|floatformat:2 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-0 pt-2 border-top">
+                            <strong>Total:</strong>
+                            <strong class="text-primary">${{ order.total_amount|floatformat:2 }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Actions -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    {% if order.status == 'DELIVERED' %}
+                    <form method="post" action="{% url 'complete_order' order.order_id %}" class="mb-2">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success w-100">
+                            ✅ Received
+                        </button>
+                    </form>
+                    <a href="{% url 'refund_order' order.order_id %}" class="btn btn-warning w-100 mb-2">
+                        💰 Request Refund
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'reorder' order.order_id %}" class="btn btn-primary w-100 mb-2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                        🔄 Re-order Items
+                    </a>
+                    <a href="{% url 'contact_support' %}" class="btn btn-outline-secondary w-100 mb-2">
+                        💬 Contact Support
+                    </a>
+                    <a href="{% url 'order_history' %}" class="btn btn-outline-secondary w-100">
+                        📋 View All Orders
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .card-header {
+        padding: 1rem 1.25rem;
+    }
+    
+    .tracking-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: #e9ecef;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        border: 3px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+    
+    .tracking-icon.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+        }
+        50% {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+        }
+    }
+    
+    .progress {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        transition: width 0.6s ease;
+    }
+</style>
+{% endblock %}

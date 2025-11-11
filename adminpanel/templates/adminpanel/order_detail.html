@@ -1,0 +1,256 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}Order {{ order.order_id }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="mb-3">
+        <a href="{% url 'admin_order_list' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Orders
+        </a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="gradient-text"><i class="bi bi-bag-check"></i> Order Details</h1>
+            <p class="text-muted">Order ID: {{ order.order_id }}</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column: Order Progress & Details -->
+        <div class="col-lg-8 mb-4">
+            <!-- Order Status Update -->
+            <div class="modern-card p-4 mb-4">
+                <h5 class="mb-3"><i class="bi bi-gear"></i> Update Order Status</h5>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_status">
+                    <div class="row align-items-end">
+                        <div class="col-md-8">
+                            <label for="status" class="form-label">Order Status</label>
+                            <select class="form-select" name="status" id="status">
+                                {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-check-circle"></i> Update Status
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Order Tracking -->
+            <div class="modern-card p-4 mb-4">
+                <h5 class="mb-3"><i class="bi bi-truck"></i> Order Tracking</h5>
+                <div class="progress mb-4" style="height: 8px;">
+                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ progress }}%;" 
+                         aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <div class="text-center" style="flex: 1;">
+                        <div class="tracking-icon {% if progress >= 33 %}active{% endif %}">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <small class="d-block mt-2 fw-bold">Order Received</small>
+                        {% if order.created_at %}
+                        <small class="text-muted">{{ order.created_at|date:"M d, H:i" }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="text-center" style="flex: 1;">
+                        <div class="tracking-icon {% if progress >= 66 %}active{% endif %}">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                        <small class="d-block mt-2 fw-bold">Order Sent</small>
+                        {% if order.order_sent_at %}
+                        <small class="text-muted">{{ order.order_sent_at|date:"M d, H:i" }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="text-center" style="flex: 1;">
+                        <div class="tracking-icon {% if progress >= 100 %}active{% endif %}">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                        <small class="d-block mt-2 fw-bold">Delivered</small>
+                        {% if order.delivered_at %}
+                        <small class="text-muted">{{ order.delivered_at|date:"M d, H:i" }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order Information -->
+            <div class="modern-card p-4 mb-4">
+                <h5 class="mb-3"><i class="bi bi-info-circle"></i> Order Information</h5>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Order ID:</strong></p>
+                        <p class="text-primary">{{ order.order_id }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Order Date:</strong></p>
+                        <p>{{ order.created_at|date:"F d, Y - g:i A" }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Customer Email:</strong></p>
+                        <p>{{ order.user.email }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Payment Method:</strong></p>
+                        <p>{{ order.get_payment_method_display }}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Status:</strong></p>
+                        <p>
+                            <span class="badge bg-{{ order.get_status_display_color }}">
+                                {{ order.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Total Amount:</strong></p>
+                        <p class="text-primary fw-bold">${{ order.total_amount|floatformat:2 }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Shipping Address -->
+            <div class="modern-card p-4 mb-4">
+                <h5 class="mb-3"><i class="bi bi-geo-alt"></i> Shipping Address</h5>
+                <p class="mb-1"><strong>{{ order.shipping_full_name }}</strong></p>
+                <p class="mb-1">{{ order.shipping_phone }}</p>
+                <p class="mb-1">{{ order.shipping_address_line1 }}</p>
+                {% if order.shipping_address_line2 %}
+                <p class="mb-1">{{ order.shipping_address_line2 }}</p>
+                {% endif %}
+                <p class="mb-1">{{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_postal_code }}</p>
+                <p class="mb-0">{{ order.shipping_country }}</p>
+            </div>
+            
+            <!-- Order Items -->
+            <div class="modern-card p-4">
+                <h5 class="mb-3"><i class="bi bi-cart"></i> Order Items</h5>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>SKU</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.items.all %}
+                            <tr>
+                                <td>{{ item.product_name }}</td>
+                                <td>{{ item.product_sku }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>${{ item.unit_price|floatformat:2 }}</td>
+                                <td class="fw-bold">${{ item.total_price|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>Subtotal:</strong></td>
+                                <td class="fw-bold">${{ order.subtotal|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>Shipping:</strong></td>
+                                <td class="fw-bold">
+                                    {% if order.shipping_fee == 0 %}
+                                    <span class="text-success">FREE</span>
+                                    {% else %}
+                                    ${{ order.shipping_fee|floatformat:2 }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>Tax:</strong></td>
+                                <td class="fw-bold">${{ order.tax|floatformat:2 }}</td>
+                            </tr>
+                            <tr class="table-primary">
+                                <td colspan="4" class="text-end"><strong>Total:</strong></td>
+                                <td class="fw-bold text-primary">${{ order.total_amount|floatformat:2 }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Quick Info -->
+        <div class="col-lg-4">
+            <div class="modern-card p-4">
+                <h5 class="mb-3"><i class="bi bi-speedometer2"></i> Quick Info</h5>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-3">
+                        <strong>Total Items:</strong><br>
+                        {{ order.item_count }} item{{ order.item_count|pluralize }}
+                    </li>
+                    <li class="mb-3">
+                        <strong>Created:</strong><br>
+                        {{ order.created_at|date:"F d, Y H:i" }}
+                    </li>
+                    <li class="mb-3">
+                        <strong>Last Updated:</strong><br>
+                        {{ order.updated_at|date:"F d, Y H:i" }}
+                    </li>
+                    {% if order.notes %}
+                    <li>
+                        <strong>Notes:</strong><br>
+                        {{ order.notes }}
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .modern-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .tracking-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: #e9ecef;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        border: 3px solid #e9ecef;
+    }
+    
+    .tracking-icon.active {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+        color: white;
+    }
+</style>
+{% endblock %}

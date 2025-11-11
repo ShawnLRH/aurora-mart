@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email - Aurora-Mart</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+        }
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .verification-container {
+            max-width: 500px;
+            width: 90%;
+            background: #fff;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .verification-icon {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .verification-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .verification-subtitle {
+            color: #6c757d;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+        .email-display {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 25px;
+        }
+        .code-input {
+            width: 100%;
+            text-align: center;
+            font-size: 2rem;
+            letter-spacing: 10px;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .code-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            outline: none;
+        }
+        .btn-verify {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            width: 100%;
+            margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+        .btn-verify:hover {
+            transform: translateY(-2px);
+            color: white;
+        }
+        .btn-back {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        .btn-back:hover {
+            text-decoration: underline;
+            color: #5568d3;
+        }
+        .timer {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+        .timer i {
+            margin-right: 5px;
+        }
+        .attempts-warning {
+            background-color: #f8d7da;
+            border: 1px solid #f5c2c7;
+            color: #842029;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+        .instructions {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+        .instructions ul {
+            margin: 10px 0 0 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin-bottom: 5px;
+        }
+        .logo {
+            max-width: 150px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    {% load static %}
+    
+    <div class="verification-container">
+        <img src="{% static 'images/AuroraMartLogo.png' %}" alt="Aurora-Mart Logo" class="logo">
+        
+        <div class="verification-icon">
+            <i class="bi bi-envelope-check"></i>
+        </div>
+        
+        <h1 class="verification-title">Verify Your Email</h1>
+        <p class="verification-subtitle">We've sent a 6-digit verification code to:</p>
+        <div class="email-display">{{ email }}</div>
+        
+        <!-- Display Django messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <div class="instructions">
+            <strong><i class="bi bi-info-circle"></i> Instructions:</strong>
+            <ul>
+                <li>Check your email inbox (and spam folder)</li>
+                <li>Enter the 6-digit code you received</li>
+                <li>Code expires in 15 minutes</li>
+                <li>You have 5 attempts to enter the correct code</li>
+            </ul>
+        </div>
+        
+        {% if verification.attempts > 0 %}
+        <div class="attempts-warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Warning:</strong> {{ verification.attempts }} failed attempt(s). 
+            {% with remaining=5 %}
+            {% with used=verification.attempts %}
+            You have {{ remaining|add:"-"|add:used }} attempt(s) remaining.
+            {% endwith %}
+            {% endwith %}
+        </div>
+        {% endif %}
+        
+        <div class="timer" id="timer">
+            <i class="bi bi-clock"></i>
+            <span id="countdown">Calculating time remaining...</span>
+        </div>
+        
+        <div id="expired-notice" style="display: none;">
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <strong>Code has expired!</strong> Click the button below to receive a new verification code.
+            </div>
+            
+            <form method="post" action="{% url 'resend_verification_code' verification.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-verify" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    <i class="bi bi-arrow-clockwise"></i> Resend Verification Code
+                </button>
+            </form>
+        </div>
+        
+        <form method="post" id="verificationForm">
+            {% csrf_token %}
+            <input 
+                type="text" 
+                name="verification_code" 
+                class="code-input" 
+                placeholder="000000"
+                maxlength="6"
+                pattern="[0-9]{6}"
+                required
+                autocomplete="off"
+                id="codeInput"
+                inputmode="numeric">
+            
+            <button type="submit" class="btn btn-verify" id="verifyBtn">
+                <i class="bi bi-check-circle"></i> Verify Email
+            </button>
+        </form>
+        
+        <div class="mt-3">
+            <form method="post" action="{% url 'resend_verification_code' verification.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-link text-decoration-none" style="color: #667eea;">
+                    <i class="bi bi-arrow-clockwise"></i> Resend Code
+                </button>
+            </form>
+        </div>
+        
+        <a href="{% url 'signup' %}" class="btn-back">
+            <i class="bi bi-arrow-left"></i> Back to Signup
+        </a>
+        
+        <p class="text-muted mt-4" style="font-size: 0.85rem;">
+            Didn't receive the code? Check your spam folder or click "Resend Code" above.
+        </p>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-focus on code input
+        document.getElementById('codeInput').focus();
+        
+        // Only allow numbers in the code input
+        document.getElementById('codeInput').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+        
+        // Auto-submit when 6 digits are entered (optional)
+        document.getElementById('codeInput').addEventListener('input', function(e) {
+            if (this.value.length === 6) {
+                // Optionally auto-submit
+                // document.getElementById('verificationForm').submit();
+            }
+        });
+        
+        // Countdown timer
+        const expiresAtISO = '{{ expires_at }}';
+        const expiresAt = new Date(expiresAtISO);
+        const countdownElement = document.getElementById('countdown');
+        const timerElement = document.getElementById('timer');
+        const verificationForm = document.getElementById('verificationForm');
+        const expiredNotice = document.getElementById('expired-notice');
+        const codeInput = document.getElementById('codeInput');
+        const verifyBtn = document.getElementById('verifyBtn');
+        
+        // Check if already expired on page load
+        const initialTimeRemaining = {{ time_remaining_seconds }};
+        if (initialTimeRemaining <= 0) {
+            showExpired();
+        }
+        
+        function showExpired() {
+            countdownElement.textContent = 'Code has expired!';
+            timerElement.style.backgroundColor = '#f8d7da';
+            timerElement.style.borderColor = '#f5c2c7';
+            timerElement.style.color = '#842029';
+            
+            // Hide form and show resend button
+            verificationForm.style.display = 'none';
+            expiredNotice.style.display = 'block';
+            codeInput.disabled = true;
+            verifyBtn.disabled = true;
+        }
+        
+        function updateCountdown() {
+            const now = new Date();
+            const diff = expiresAt - now;
+            
+            if (diff <= 0) {
+                showExpired();
+                return;
+            }
+            
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            
+            countdownElement.textContent = `Code expires in ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (minutes < 5) {
+                timerElement.style.backgroundColor = '#fff3cd';
+                timerElement.style.borderColor = '#ffc107';
+                timerElement.style.color = '#856404';
+            }
+            
+            if (minutes < 2) {
+                timerElement.style.backgroundColor = '#f8d7da';
+                timerElement.style.borderColor = '#f5c2c7';
+                timerElement.style.color = '#842029';
+            }
+            
+            setTimeout(updateCountdown, 1000);
+        }
+        
+        // Only start countdown if not already expired
+        if (initialTimeRemaining > 0) {
+            updateCountdown();
+        }
+        
+        // Auto-dismiss alerts
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            setTimeout(function() {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }, 8000);
+        });
+    </script>
+</body>
+</html>

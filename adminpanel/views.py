@@ -827,3 +827,95 @@ def association_rules(request):
         'error_message': error_message,
     }
     return render(request, 'adminpanel/association_rules.html', context)
+
+
+@staff_member_required
+def order_list(request):
+    from ecommerce.models import Order
+    
+    status_filter = request.GET.get('status', '').strip()
+    search_query = request.GET.get('search', '').strip()
+    
+    orders = Order.objects.select_related('user', 'customer').all()
+    
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+    
+    if search_query:
+        orders = orders.filter(
+            Q(order_id__icontains=search_query) |
+            Q(user__email__icontains=search_query) |
+            Q(shipping_full_name__icontains=search_query)
+        )
+    
+    orders = orders.order_by('-created_at')
+    
+    paginator = Paginator(orders, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'status_choices': Order.STATUS_CHOICES,
+        'total_orders': paginator.count,
+    }
+    return render(request, 'adminpanel/order_list.html', context)
+
+
+@staff_member_required
+def order_detail_admin(request, order_id):
+    from ecommerce.models import Order
+    from .models import SystemLog
+    from django.utils import timezone
+    
+    order = get_object_or_404(Order, order_id=order_id)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'update_status':
+            new_status = request.POST.get('status')
+            if new_status in dict(Order.STATUS_CHOICES):
+                old_status = order.status
+                order.status = new_status
+                
+                # Auto-update timestamps
+                if new_status == 'ORDER_SENT' and not order.order_sent_at:
+                    order.order_sent_at = timezone.now()
+                elif new_status == 'DELIVERED' and not order.delivered_at:
+                    order.delivered_at = timezone.now()
+                
+                order.save()
+                
+                SystemLog.objects.create(
+                    user=request.user,
+                    action_type='UPDATE',
+                    object_type='Order',
+                    object_id=order.order_id,
+                    description=f'Updated order {order.order_id} status from {old_status} to {new_status}',
+                    ip_address=get_client_ip(request)
+                )
+                
+                messages.success(request, f'Order status updated to {order.get_status_display()}')
+            else:
+                messages.error(request, 'Invalid status selected.')
+        
+        return redirect('admin_order_detail', order_id=order.order_id)
+    
+    # Calculate progress
+    progress_map = {
+        'ORDER_RECEIVED': 33,
+        'ORDER_SENT': 66,
+        'DELIVERED': 100,
+        'CANCELLED': 0,
+    }
+    progress = progress_map.get(order.status, 0)
+    
+    context = {
+        'order': order,
+        'progress': progress,
+        'status_choices': Order.STATUS_CHOICES,
+    }
+    return render(request, 'adminpanel/order_detail.html', context)
