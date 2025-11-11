@@ -21,6 +21,51 @@
         .password-wrapper i { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6c757d; }
         .footer { background-color: #343a40; color: white; padding: 40px 0; flex-shrink: 0; }
         .logo-img { max-width: 70%; max-height: 70%; object-fit: contain; margin-top: 40px; }
+        
+        /* Pure CSS Closeable Alerts */
+        .alert-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-close-input {
+            display: none;
+        }
+        
+        .alert-close-input:checked ~ .alert {
+            display: none;
+        }
+        
+        .alert {
+            position: relative;
+            padding: 12px 40px 12px 16px;
+            border-radius: 8px;
+        }
+        
+        .alert-close-btn {
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+            color: inherit;
+            opacity: 0.5;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .alert-close-btn:hover {
+            opacity: 0.75;
+        }
     </style>
 </head>
 <body>
@@ -85,18 +130,24 @@
                     <!-- Display Django messages -->
                     {% if messages %}
                         {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <div class="alert-container">
+                                <input type="checkbox" id="alert-{{ forloop.counter }}" class="alert-close-input">
+                                <div class="alert alert-{{ message.tags }}" role="alert">
+                                    {{ message }}
+                                    <label for="alert-{{ forloop.counter }}" class="alert-close-btn" aria-label="Close">&times;</label>
+                                </div>
                             </div>
                         {% endfor %}
                     {% endif %}
                     
                     {% if form.errors %}
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <strong><i class="bi bi-exclamation-triangle-fill"></i> Login Failed</strong>
-                            <p class="mb-0 mt-2">Invalid email/username or password. Please try again.</p>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <div class="alert-container">
+                            <input type="checkbox" id="alert-errors" class="alert-close-input">
+                            <div class="alert alert-danger" role="alert">
+                                <strong><i class="bi bi-exclamation-triangle-fill"></i> Login Failed</strong>
+                                <p class="mb-0 mt-2">Invalid email/username or password. Please try again.</p>
+                                <label for="alert-errors" class="alert-close-btn" aria-label="Close">&times;</label>
+                            </div>
                         </div>
                     {% endif %}
                     
@@ -135,18 +186,5 @@
         </div>
     </footer>
     
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Auto-dismiss alerts after 10 seconds
-        document.addEventListener('DOMContentLoaded', function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                setTimeout(function() {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }, 10000);
-            });
-        });
-    </script>
 </body>
 </html>
