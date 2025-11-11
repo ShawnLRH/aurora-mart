@@ -1,6 +1,37 @@
-{% extends 'ecommerce/base.html' %}
+{% extends 'adminpanel/admin_base.html' %}
 
-{% block title %}{{ page_title }} - Admin Panel{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control, .form-select {
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 0.75rem;
+        transition: all 0.3s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: var(--admin-primary);
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .text-danger {
+        color: #dc3545 !important;
+    }
+    
+    .btn-admin {
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container my-5">
@@ -87,7 +118,7 @@
                         <a href="{% url 'admin_product_list' %}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Cancel
                         </a>
-                        <button type="submit" class="btn btn-gradient">
+                        <button type="submit" class="btn btn-admin">
                             <i class="bi {% if product %}bi-check-circle{% else %}bi-plus-circle{% endif %}"></i> 
                             {{ submit_text }}
                         </button>
