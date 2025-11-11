@@ -36,4 +36,8 @@ urlpatterns = [
     path('order/<str:order_id>/reorder/', views.reorder, name='reorder'),
     path('order/<str:order_id>/complete/', views.complete_order, name='complete_order'),
     path('order/<str:order_id>/refund/', views.refund_order, name='refund_order'),
+    
+    # Review URLs
+    path('order/<str:order_id>/review/<str:product_sku>/', views.create_review, name='create_review'),
+    path('my-reviews/', views.my_reviews, name='my_reviews'),
 ]

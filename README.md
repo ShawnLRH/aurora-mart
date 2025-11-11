@@ -26,6 +26,8 @@ A complete B2C e-commerce web application using Python and Django conforming to 
 - 💳 Complete checkout process with shipping addresses
 - 📋 Order management and tracking system
 - ✅ Order completion and refund functionality
+- ⭐ Product reviews with verified purchase badges
+- 📝 Customer review system (write reviews after delivery)
 - 🗄️ SQLite database with sample data
 - 📱 Responsive Bootstrap design (Pure CSS, no JavaScript)
 
@@ -219,6 +221,14 @@ aurora-mart/
 - Order completion workflow (customer confirms delivery)
 - Refund request system with reason tracking
 
+### Review Model
+- **Review**: Customer product reviews with 1-5 star ratings
+- Verified purchase badges (only customers who bought the product can review)
+- One review per product per order constraint
+- Automatic product rating calculation based on review averages
+- Review title and detailed comment support
+- Timestamp tracking for created and updated reviews
+
 ### Support Ticket Model
 - **SupportTicket**: Customer support requests with admin responses
 - Status tracking (Open/Resolved)
@@ -236,12 +246,13 @@ aurora-mart/
 ### Standard E-commerce Flow
 1. **Browse Products**: Visit the home page to see featured and popular products
 2. **Search & Filter**: Search by name or SKU with keyword highlighting, filter by category
-3. **View Details**: Click on any product to see detailed information and AI recommendations
+3. **View Details**: Click on any product to see detailed information, AI recommendations, and customer reviews
 4. **Sign Up**: Create an account with email verification (6-digit code sent to console)
 5. **Add to Cart**: Add products to your shopping cart with real-time stock validation
 6. **Checkout**: Complete purchase with shipping address and payment method selection
 7. **Track Orders**: View order status progression (Received → Sent → Delivered)
 8. **Complete Order**: After delivery, confirm receipt or request refund with automatic stock restoration
+9. **Write Reviews**: Leave product reviews after receiving your order (verified purchase badge included)
 
 ### AI Features in Action
 
@@ -295,20 +306,49 @@ Actionable insights for business strategy at `/adminpanel/ai/rules/`:
 4. **Confirm or Refund**: Two options appear after delivery:
    - ✅ **Received**: Mark order as COMPLETED (confirms satisfaction)
    - 💰 **Request Refund**: Submit refund reason, automatically restores stock and changes status to REFUNDED
+5. **Write Reviews**: After delivery or completion, review products with "Write Review" button
+   - Rate products 1-5 stars
+   - Add review title and detailed comments
+   - Verified purchase badge automatically added
+   - View all reviews in "My Reviews" section
 
 #### Admin Workflow
 1. **View Orders**: Access Order Management from admin panel dashboard
 2. **Search & Filter**: Find orders by Order ID, customer email, or status
 3. **Update Status**: Change order status (Received → Sent → Delivered)
 4. **Monitor Refunds**: Track refunded orders and automatic stock restoration
+5. **Manage Reviews**: View and moderate customer reviews in admin panel
 
 #### Order Statuses
 - **ORDER_RECEIVED**: Initial status after checkout
 - **ORDER_SENT**: Order shipped by admin
-- **DELIVERED**: Order delivered to customer
-- **COMPLETED**: Customer confirmed receipt
+- **DELIVERED**: Order delivered to customer (reviews can be written)
+- **COMPLETED**: Customer confirmed receipt (reviews can be written)
 - **REFUNDED**: Customer requested refund, stock restored
 - **CANCELLED**: Order cancelled (by admin or system)
+
+### Review System
+
+#### Writing Reviews
+- **Eligibility**: Only customers who purchased the product can write reviews
+- **Timing**: Reviews can be written after order status is DELIVERED or COMPLETED
+- **Rating**: 1-5 star rating with visual selection
+- **Content**: Title (max 200 chars) and detailed comment required
+- **Verification**: All reviews automatically marked as "Verified Purchase"
+- **Uniqueness**: One review per product per order (prevents duplicate reviews)
+
+#### Viewing Reviews
+- **Product Pages**: Reviews displayed in tabs with rating statistics
+- **Rating Summary**: Visual breakdown of star ratings with percentages
+- **My Reviews**: Personal dashboard showing all reviews you've written
+- **Pagination**: Reviews paginated (5 per page on product pages, 10 on My Reviews)
+
+#### Review Features
+- Automatic product rating calculation (average of all reviews)
+- Visual star displays (⭐) for ratings
+- Review timestamps (creation and update dates)
+- Verified purchase badges on all reviews
+- Quick access via user profile dropdown
 
 See **AI_TESTING_GUIDE.md** for detailed testing instructions.
 

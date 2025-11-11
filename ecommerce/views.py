@@ -56,6 +56,9 @@ def home(request):
     return render(request, 'ecommerce/home.html', context)
 
 def product_detail(request, sku):
+    from django.core.paginator import Paginator
+    from .models import Review
+    
     product = get_object_or_404(Product, sku_code=sku)
     
     # Use AI to get "Frequently Bought Together" recommendations
@@ -85,6 +88,29 @@ def product_detail(request, sku):
         ).exclude(id=product.id)[:4]
         frequently_bought_together = [{'product': p, 'confidence': None, 'lift': None} for p in related_products]
     
+    # Get reviews for this product
+    reviews = Review.objects.filter(product=product).select_related('user')
+    
+    # Calculate rating statistics
+    from django.db.models import Count
+    rating_stats = reviews.values('rating').annotate(count=Count('rating')).order_by('-rating')
+    total_reviews = reviews.count()
+    
+    # Calculate percentages for rating stats
+    rating_stats_with_percent = []
+    for stat in rating_stats:
+        percentage = (stat['count'] * 100 / total_reviews) if total_reviews > 0 else 0
+        rating_stats_with_percent.append({
+            'rating': stat['rating'],
+            'count': stat['count'],
+            'percentage': round(percentage, 1)
+        })
+    
+    # Pagination for reviews
+    paginator = Paginator(reviews, 5)
+    page_number = request.GET.get('page', 1)
+    reviews_page = paginator.get_page(page_number)
+    
     # Get all categories for navbar dropdown
     all_categories = Product.objects.values_list('product_category', flat=True).distinct().order_by('product_category')
     
@@ -92,6 +118,9 @@ def product_detail(request, sku):
         'product': product,
         'frequently_bought_together': frequently_bought_together,
         'all_categories': all_categories,
+        'reviews': reviews_page,
+        'total_reviews': total_reviews,
+        'rating_stats': rating_stats_with_percent,
     }
     return render(request, 'ecommerce/product.html', context)
 
@@ -1247,7 +1276,7 @@ def order_history(request):
 
 @login_required
 def order_detail(request, order_id):
-    from .models import Order
+    from .models import Order, Review
     
     try:
         order = Order.objects.get(order_id=order_id, user=request.user)
@@ -1264,9 +1293,16 @@ def order_detail(request, order_id):
     }
     progress = progress_map.get(order.status, 0)
     
+    # Get list of products already reviewed from this order
+    reviewed_products = Review.objects.filter(
+        user=request.user,
+        order=order
+    ).values_list('product__sku_code', flat=True)
+    
     context = {
         'order': order,
         'progress': progress,
+        'reviewed_products': list(reviewed_products),
     }
     return render(request, 'ecommerce/order_detail.html', context)
 
@@ -1387,3 +1423,97 @@ def refund_order(request, order_id):
         'order': order,
     }
     return render(request, 'ecommerce/refund_order.html', context)
+
+
+@login_required
+def create_review(request, order_id, product_sku):
+    from .models import Order, Product, Review
+    
+    try:
+        order = Order.objects.get(order_id=order_id, user=request.user)
+        product = Product.objects.get(sku_code=product_sku)
+    except (Order.DoesNotExist, Product.DoesNotExist):
+        messages.error(request, 'Order or product not found.')
+        return redirect('order_history')
+    
+    # Only allow reviews for delivered or completed orders
+    if order.status not in ['DELIVERED', 'COMPLETED']:
+        messages.error(request, 'You can only review products from delivered orders.')
+        return redirect('order_detail', order_id=order.order_id)
+    
+    # Check if product was in this order
+    order_item = order.items.filter(product=product).first()
+    if not order_item:
+        messages.error(request, 'This product was not in your order.')
+        return redirect('order_detail', order_id=order.order_id)
+    
+    # Check if review already exists
+    existing_review = Review.objects.filter(product=product, user=request.user, order=order).first()
+    if existing_review:
+        messages.warning(request, 'You have already reviewed this product from this order.')
+        return redirect('order_detail', order_id=order.order_id)
+    
+    if request.method == 'POST':
+        rating = request.POST.get('rating')
+        title = request.POST.get('title', '').strip()
+        comment = request.POST.get('comment', '').strip()
+        
+        # Validation
+        if not rating or not title or not comment:
+            messages.error(request, 'Please fill in all fields.')
+            return redirect('create_review', order_id=order_id, product_sku=product_sku)
+        
+        try:
+            rating = int(rating)
+            if rating < 1 or rating > 5:
+                raise ValueError
+        except ValueError:
+            messages.error(request, 'Invalid rating value.')
+            return redirect('create_review', order_id=order_id, product_sku=product_sku)
+        
+        # Create review
+        Review.objects.create(
+            product=product,
+            user=request.user,
+            order=order,
+            rating=rating,
+            title=title,
+            comment=comment
+        )
+        
+        # Update product rating (calculate average)
+        from django.db.models import Avg
+        avg_rating = Review.objects.filter(product=product).aggregate(Avg('rating'))['rating__avg']
+        if avg_rating:
+            product.product_rating = round(avg_rating, 1)
+            product.save()
+        
+        messages.success(request, 'Thank you for your review!')
+        return redirect('order_detail', order_id=order.order_id)
+    
+    # GET request - show review form
+    context = {
+        'order': order,
+        'product': product,
+        'order_item': order_item,
+    }
+    return render(request, 'ecommerce/create_review.html', context)
+
+
+@login_required
+def my_reviews(request):
+    from .models import Review
+    from django.core.paginator import Paginator
+    
+    reviews = Review.objects.filter(user=request.user)
+    
+    # Pagination
+    paginator = Paginator(reviews, 10)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'reviews': page_obj,
+    }
+    return render(request, 'ecommerce/my_reviews.html', context)

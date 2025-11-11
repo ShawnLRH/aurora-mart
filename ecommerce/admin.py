@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Customer, Product, Order, OrderItem, Address
+from .models import Customer, Product, Order, OrderItem, Address, Review
 from django.utils import timezone
 
 
@@ -61,6 +61,26 @@ class AddressAdmin(admin.ModelAdmin):
     list_filter = ('is_default', 'country', 'state')
     search_fields = ('full_name', 'user__email', 'address_line1', 'city', 'postal_code')
     readonly_fields = ('created_at',)
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ('product', 'user', 'rating', 'title', 'verified_purchase', 'created_at')
+    list_filter = ('rating', 'verified_purchase', 'created_at')
+    search_fields = ('product__product_name', 'user__email', 'title', 'comment')
+    readonly_fields = ('user', 'product', 'order', 'created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Review Information', {
+            'fields': ('user', 'product', 'order', 'rating', 'verified_purchase')
+        }),
+        ('Review Content', {
+            'fields': ('title', 'comment')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
 
 
 admin.site.register(Customer)

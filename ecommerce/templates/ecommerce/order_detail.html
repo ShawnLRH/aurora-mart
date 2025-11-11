@@ -125,18 +125,30 @@
                 </div>
                 <div class="card-body">
                     {% for item in order.items.all %}
-                    <div class="d-flex align-items-center mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
-                        <div class="flex-grow-1">
-                            <h6 class="mb-1">
-                                <a href="{% url 'product_detail' item.product_sku %}" class="text-decoration-none">
-                                    {{ item.product_name }}
-                                </a>
-                            </h6>
-                            <small class="text-muted">SKU: {{ item.product_sku }}</small><br>
-                            <small class="text-muted">Unit Price: ${{ item.unit_price|floatformat:2 }} × {{ item.quantity }}</small>
-                        </div>
-                        <div class="text-end">
-                            <strong>${{ item.total_price|floatformat:2 }}</strong>
+                    <div class="mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">
+                                    <a href="{% url 'product_detail' item.product_sku %}" class="text-decoration-none">
+                                        {{ item.product_name }}
+                                    </a>
+                                </h6>
+                                <small class="text-muted">SKU: {{ item.product_sku }}</small><br>
+                                <small class="text-muted">Unit Price: ${{ item.unit_price|floatformat:2 }} × {{ item.quantity }}</small>
+                            </div>
+                            <div class="text-end">
+                                <strong class="d-block mb-2">${{ item.total_price|floatformat:2 }}</strong>
+                                {% if order.status == 'DELIVERED' or order.status == 'COMPLETED' %}
+                                    {% if item.product.sku_code not in reviewed_products %}
+                                    <a href="{% url 'create_review' order.order_id item.product_sku %}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        ✍️ Write Review
+                                    </a>
+                                    {% else %}
+                                    <span class="badge bg-success">✓ Reviewed</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     {% endfor %}

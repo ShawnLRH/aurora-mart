@@ -1,0 +1,134 @@
+{% extends 'ecommerce/base.html' %}
+
+{% block title %}Write a Review - Aurora-Mart{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h4 class="mb-0">✍️ Write a Review</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Product Info -->
+                    <div class="d-flex align-items-center mb-4 p-3" style="background-color: #f8f9fa; border-radius: 10px;">
+                        <div class="flex-grow-1">
+                            <h5 class="mb-1">{{ product.product_name }}</h5>
+                            <p class="text-muted mb-0">SKU: {{ product.sku_code }}</p>
+                            <small class="text-muted">From Order #{{ order.order_id }}</small>
+                        </div>
+                        <div class="text-end">
+                            <p class="mb-0 fw-bold">${{ order_item.unit_price }}</p>
+                            <small class="text-muted">Qty: {{ order_item.quantity }}</small>
+                        </div>
+                    </div>
+
+                    <!-- Review Form -->
+                    <form method="post" action="{% url 'create_review' order.order_id product.sku_code %}">
+                        {% csrf_token %}
+                        
+                        <!-- Rating Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Rating *</label>
+                            <div class="rating-selection">
+                                <input type="radio" name="rating" value="5" id="star5" required>
+                                <label for="star5" class="star-label">⭐⭐⭐⭐⭐ Excellent</label>
+                                
+                                <input type="radio" name="rating" value="4" id="star4" required>
+                                <label for="star4" class="star-label">⭐⭐⭐⭐ Good</label>
+                                
+                                <input type="radio" name="rating" value="3" id="star3" required>
+                                <label for="star3" class="star-label">⭐⭐⭐ Average</label>
+                                
+                                <input type="radio" name="rating" value="2" id="star2" required>
+                                <label for="star2" class="star-label">⭐⭐ Poor</label>
+                                
+                                <input type="radio" name="rating" value="1" id="star1" required>
+                                <label for="star1" class="star-label">⭐ Very Poor</label>
+                            </div>
+                        </div>
+
+                        <!-- Review Title -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label fw-bold">Review Title *</label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   placeholder="Summarize your experience" required maxlength="200">
+                            <small class="text-muted">Example: "Great product!" or "Not as expected"</small>
+                        </div>
+
+                        <!-- Review Comment -->
+                        <div class="mb-4">
+                            <label for="comment" class="form-label fw-bold">Your Review *</label>
+                            <textarea class="form-control" id="comment" name="comment" rows="6" 
+                                      placeholder="Share your experience with this product..." required></textarea>
+                            <small class="text-muted">Help others by sharing your detailed experience</small>
+                        </div>
+
+                        <!-- Verified Purchase Badge -->
+                        <div class="alert alert-info mb-4">
+                            <strong>✓ Verified Purchase</strong> - This review is from a verified buyer
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary flex-grow-1" 
+                                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                                📝 Submit Review
+                            </button>
+                            <a href="{% url 'order_detail' order.order_id %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .rating-selection {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .rating-selection input[type="radio"] {
+        display: none;
+    }
+    
+    .star-label {
+        padding: 12px 20px;
+        background-color: #f8f9fa;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1.1rem;
+    }
+    
+    .star-label:hover {
+        background-color: #e9ecef;
+        border-color: #667eea;
+        transform: translateX(5px);
+    }
+    
+    .rating-selection input[type="radio"]:checked + .star-label {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: #667eea;
+        font-weight: bold;
+    }
+    
+    .card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+</style>
+{% endblock %}
